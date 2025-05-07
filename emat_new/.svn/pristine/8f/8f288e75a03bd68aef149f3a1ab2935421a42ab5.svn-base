@@ -1,0 +1,284 @@
+#include "pointLaserCtl.h"
+#include <QMessageBox>
+
+#include <QFile>
+#include <QTextStream>
+
+
+const BYTE INITIAL_IP[LENGTH_IP_V4]  = {192, 168, 0, 1};
+const WORD INITIAL_PORT = 24685;
+const LONG CUR_DEVICE_ID = 0;
+const DWORD LASER_POINT_TIMEOUT = 10 * 000;
+const int MAX_LEN_POINT_LASER_BUFFER = 1024 * 5;
+
+
+pointLaserCtl::pointLaserCtl(void)
+{
+	mConnectStatus = POINT_LASER_NOT_CONNECTED;
+	memset(&m_ethernetSetting, 0, sizeof(m_ethernetSetting));
+	for (int i = 0; i < LENGTH_IP_V4; i++)
+	{
+		m_ethernetSetting.ipAddress[i] = INITIAL_IP[i];
+	}
+	m_ethernetSetting.portNo = INITIAL_PORT;
+	m_sequenceTrendIndex = 0;
+	m_isTrending = false;
+	m_sequenceTrendReceivedDataCount = 0;
+	strPointLaserFileName = "E:/laserData.txt";
+}
+
+pointLaserCtl::~pointLaserCtl(void)
+{
+	mConnectStatus = POINT_LASER_BREAK;
+}
+
+pointLaserCtl::pointLaserCtl(BYTE* ip, WORD port)
+{
+	mConnectStatus = POINT_LASER_NOT_CONNECTED;
+	if (NULL == ip)
+	{ 
+		pointLaserCtl();
+		return;
+	}
+	if (0 >port || 65535 < port)
+	{
+		pointLaserCtl();
+		return;
+	}
+
+	for (int i = 0; i < LENGTH_IP_V4; i++)
+	{
+		m_ethernetSetting.ipAddress[i] = ip[i];
+	}
+	m_ethernetSetting.portNo = port;
+	m_sequenceTrendIndex = 0;
+	m_isTrending = false;
+	m_sequenceTrendReceivedDataCount = 0;
+	
+}
+
+int pointLaserCtl::openPointLaserEhernet()
+{
+	if (mConnectStatus != POINT_LASER_NOT_CONNECTED)
+	{
+		return ERROR_SLOEM;
+	}
+	LONG returnCode = CL3IF_OpenEthernetCommunication(CUR_DEVICE_ID, &m_ethernetSetting, LASER_POINT_TIMEOUT);
+	if (EOK != returnCode)
+	{
+		createResultMessage("openPointLaserEhernet", returnCode);
+		return ERROR_SLOEM;
+	}
+	mConnectStatus = POINT_LASER_CONNECTTING;
+	return EOK;
+}
+QVector<int> ConvertOutTargetList(CL3IF_OUTNO outTarget)
+{
+	BYTE mask = 1;
+	QVector<int> outList;
+	for (int i = 0; i < CL3IF_MAX_OUT_COUNT; i++)
+	{
+		if ((outTarget & mask) != 0)
+		{
+			outList.push_back(i + 1);
+		}
+		mask = static_cast<BYTE>(mask << 1);
+	}
+	return outList;
+}
+DWORD WINAPI pointLaserDataCollect(LPVOID pParam)
+{
+	DWORD index = 0;
+	BYTE buffer[MAX_REQUEST_DATA_LENGTH] = {0}; 
+	
+	pointLaserCtl* pPointLaser = NULL;
+	pPointLaser = (pointLaserCtl*)pParam;
+	if (NULL == pPointLaser)
+	{
+		//g_log.LOG_DEBUG(RT_ERROR, "pointLaserDataCollect:pointer is NULL");
+		return ERROR_SLOEM;
+	}
+	const LONG returnCodeTrendIndex = CL3IF_GetTrendIndex(CUR_DEVICE_ID, &index);
+	if (CL3IF_RC_OK != returnCodeTrendIndex)
+	{
+		pPointLaser->createResultMessage("CL3IF_GetTrendIndex", returnCodeTrendIndex);
+		return ERROR_SLOEM;
+	}
+	DWORD indexGet = index;
+	pPointLaser->m_sequenceTrendIndex = indexGet;
+
+	while (pPointLaser->m_isTrending)
+	{
+		DWORD nextIndex = 0;
+		DWORD obtainedDataCount = 0;
+		CL3IF_OUTNO outTarget = CL3IF_OUTNO_ALL;
+		POINT_LASER_MEASURE_DATA cur_laser_data = {0};
+		CL3IF_OUTMEASUREMENT_DATA* pOutMeasureData = NULL;
+		const LONG returnCodeTrendData = CL3IF_GetTrendData(CUR_DEVICE_ID, indexGet, MAX_MEASUREMENT_DATA_PER_TIME, 
+			&nextIndex, &obtainedDataCount, &outTarget, reinterpret_cast<DWORD*>(buffer));
+		if (returnCodeTrendData != CL3IF_RC_OK)
+		{
+			//pPointLaser->createResultMessage("GetTrendData", returnCodeTrendData);
+			//pPointLaser->m_isTrending = false;
+			continue;
+		}
+		indexGet = nextIndex;
+		QVector<int> outTargetList = ConvertOutTargetList(outTarget);
+		const BYTE* pReadPosition = buffer;
+		int trendDataCount = 0;
+		for (unsigned int i = 0; i < obtainedDataCount; i++)
+		{
+			if (MAX_SEQUENCE_MEASUREMENT_DATA <= i + pPointLaser->m_sequenceTrendReceivedDataCount)
+			{
+				//StopTrendProcess();
+				break;
+			}
+			cur_laser_data.addInfo = *reinterpret_cast<const CL3IF_ADD_INFO*>(pReadPosition);
+			pReadPosition += sizeof(CL3IF_ADD_INFO);
+			for (unsigned int j = 0; j < outTargetList.size(); j++)
+			{
+				pOutMeasureData = (CL3IF_OUTMEASUREMENT_DATA*)pReadPosition;
+				if (NULL == pOutMeasureData)
+				{
+					break;
+				}
+				cur_laser_data.outMeasurementData.push_back(*pOutMeasureData);
+				pReadPosition += sizeof(CL3IF_OUTMEASUREMENT_DATA);
+			}
+			trendDataCount++;
+			
+		}
+		
+		pPointLaser->savePointLaserData(cur_laser_data);
+		
+		pPointLaser->m_sequenceTrendReceivedDataCount += trendDataCount;
+		//if (CL3IF_VALUE_INFO_VALID == pOutMeasureData[0].valueInfo)
+		//{
+		//	pPointLaser->mCurHeight = pOutMeasureData[0].measurementValue / 1000.0;
+		//}
+		Sleep(20);
+	}
+	pPointLaser->m_isTrending = false;
+	return (DWORD)EOK;
+}
+
+int pointLaserCtl::startPointLaserMeasure(QString pointLaserFileName)
+{
+	if (POINT_LASER_CONNECTTING != mConnectStatus)
+	{
+		//g_log.LOG_DEBUG(RT_ERROR, "mConnectStatus:" + QString::number(mConnectStatus).toLatin1());
+		return ERROR_SLOEM;
+	}
+	m_isTrending = true;
+	HANDLE hNetThread;
+	DWORD dwThreadID;
+	hNetThread=CreateThread(NULL,
+		0,pointLaserDataCollect,this,0,&dwThreadID);
+	isFirst = true;
+	createResultMessage("startPointLaserMeasure", 0);
+	return EOK;
+}
+int pointLaserCtl::savePointLaserData(POINT_LASER_MEASURE_DATA& pointLaserData)
+{
+	QString strLaserData = QString::null;
+	double outAvrMeasureData = 0.0;
+	int validDataNum = 0;
+	std::vector<float> curFreshValue;
+	//double curAxisPos[AXIS_NUMBER] = {0};
+	int i = 0;
+	if (NULL == pNCSever)
+	{
+		return ERROR_SLOEM;
+	}
+	curFreshValue.clear();
+	pNCSever->getRefreshValue(curFreshValue);
+	//memcpy_s(curAxisPos, sizeof(curAxisPos),g_axis_pos_val, sizeof(g_axis_pos_val));
+	
+	strLaserData.clear();
+	for (i = 0; i + 10 < pointLaserData.outMeasurementData.size(); i += 10)
+	{
+		if (CL3IF_VALUE_INFO_VALID == pointLaserData.outMeasurementData.at(i).valueInfo)
+		{
+			outAvrMeasureData += (double)(pointLaserData.outMeasurementData.at(i).measurementValue / 10000.0);
+			strLaserData += QString::number((double)(pointLaserData.outMeasurementData.at(i).measurementValue / 10000.0), 'f', 3);
+			/*if (0 == i && NULL != pLdtDistance)
+			{
+				pLdtDistance->setText(QString::number((double)
+					(pointLaserData.outMeasurementData.at(i).measurementValue / 10000.0), 'f', 4));
+			}*/
+			strLaserData += " ";
+			validDataNum++;
+		}
+	}
+	pointLaserData.outMeasurementData.clear();
+	if (0 < validDataNum)
+	{
+		for (i = 0; i < curFreshValue.size(); i++)
+		{
+			outStr += QString::number(curFreshValue[i], 'f', 4);
+			outStr += " ";
+		}
+		/*outAvrMeasureData = outAvrMeasureData / validDataNum;
+		outStr += QString::number(outAvrMeasureData, 'f', 3);
+		outStr += " ";*/
+		outStr += strLaserData.trimmed();
+		outStr += "\n";
+	}
+	if (MAX_LEN_POINT_LASER_BUFFER < outStr.length())
+	{
+		if (fileIO.writeInfo(strPointLaserFileName, outStr, isFirst))
+		{
+			return ERROR_SLOEM;
+		}
+		outStr.clear();
+		isFirst =false;
+	}
+	else
+	{}
+	return EOK;
+}
+int pointLaserCtl::createResultMessage(const QString& methodName, const LONG returnCode)
+{
+	int rtn_code = ERROR_SLOEM;
+	QString result = QString::null;
+
+	result.append(methodName);
+	result.append(" ");
+	if (returnCode == CL3IF_RC_OK)
+	{
+		result.append("OK\n");
+		rtn_code = EOK;
+	}
+	else
+	{
+		QString code;
+		code = "NG" +QString::number(returnCode);
+		result.append(code);
+		rtn_code = ERROR_SLOEM;
+	}
+	QMessageBox::warning(NULL, "warning", result, QMessageBox::Yes);
+	//g_log.LOG_DEBUG(RT_ERROR, result.toLatin1());
+	return rtn_code;
+}
+void pointLaserCtl::getCurHeight(double& height, int& cout)
+{
+	height = mCurHeight;
+	cout = m_sequenceTrendReceivedDataCount;
+}
+int pointLaserCtl::stopPointLaserMeasure()
+{
+	m_isTrending = false;
+	if (0 < outStr.length())
+	{
+		if (!fileIO.writeInfo(strPointLaserFileName, outStr, true))
+		{
+			createResultMessage("writeInfo", ERROR_SLOEM);
+			return ERROR_SLOEM;
+		}
+		outStr.clear();
+	}
+	createResultMessage("stopPointLaserMeasure", EOK);
+	return EOK;
+}
+
+

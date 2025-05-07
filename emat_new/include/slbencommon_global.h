@@ -1,0 +1,12 @@
+#ifndef SL_BENCHMARKSLIB_GLOBAL_H
+#define SL_BENCHMARKSLIB_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#ifdef SL_MAKE_BENCHMARK_COMMON
+# define SL_BEN_EXPORT Q_DECL_EXPORT
+#else
+# define SL_BEN_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // SL_BENCHMARKSLIB_GLOBAL_H

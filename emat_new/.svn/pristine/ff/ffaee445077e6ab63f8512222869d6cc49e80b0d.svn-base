@@ -1,0 +1,270 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Vcpkg.Nuget.1.5.0\build\Vcpkg.Nuget.props" Condition="Exists('..\packages\Vcpkg.Nuget.1.5.0\build\Vcpkg.Nuget.props')" />
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{201A0E87-7796-411C-A148-5D60E3FDC601}</ProjectGuid>
+    <Keyword>QtVS_v304</Keyword>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)'=='Release|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="QtSettings">
+    <QtInstall>5.12.7_msvc2017</QtInstall>
+    <QtModules>core;gui;widgets;serialport;printsupport</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+    <QtPlugin>true</QtPlugin>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="QtSettings">
+    <QtInstall>5.12.7_msvc2017</QtInstall>
+    <QtModules>core;gui;widgets;serialport;printsupport</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+    <QtPlugin>true</QtPlugin>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="QtSettings">
+    <QtInstall>5.12.7_msvc2017</QtInstall>
+    <QtModules>core;gui;widgets;serialport;printsupport</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="QtSettings">
+    <QtInstall>5.14.2_msvc2017</QtInstall>
+    <QtModules>core;gui;widgets;serialport;printsupport</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+  </PropertyGroup>
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
+  </Target>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(HMI_SL_PP_SUBST)include;E:\software_develop\emat_new_bak-oston\emat_new_bak\emat_new\emat_communicate;E:\software_develop\emat_new_bak-oston\emat_new_bak\include;D:\vcpkg\vcpkg\installed\x86-windows\include;E:\software_develop\emat_new_bak-oston\emat_new_bak\emat_new\qplot;$(Qt_INCLUDEPATH_);..\emat_new_bak\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;_X86_</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(HMI_SL_PP_SUBST)hmisl\lib;E:\software_develop\emat_new_bak-oston\emat_new_bak\lib;D:\vcpkg\vcpkg\installed\x86-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gsl.lib;gslcblas.lib;CL3_IF.lib;sloperatecppapi.lib;gsl.lib;gslcblas.lib;CL3_IF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>false</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>E:\aa-proj_develop\OSTON\emat_new_bak\include;D:\vcpkg\vcpkg-master\installed\x86-windows\include\;D:\software\vs2017\VC\Tools\MSVC\14.16.27023\include;.\qplot;.\emat_communicate;%(AdditionalIncludeDirectories);E:\virtual_space\share\04.95.00.00.040\include;E:\software_install\python3.12_x86\include;$(HMI_SL_PP_SUBST)include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>E:\aa-proj_develop\OSTON\emat_new_bak\lib;$(HMI_SL_PP_SUBST)hmisl\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sloperatecppapi.lib;CL3_IF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(HMI_SL_PP_SUBST)include;E:\software_develop\emat_new_bak-oston\emat_new_bak\emat_new\emat_communicate;E:\software_develop\emat_new_bak-oston\emat_new_bak\include;D:\vcpkg\vcpkg\installed\x86-windows\include;E:\software_develop\emat_new_bak-oston\emat_new_bak\emat_new\qplot;$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(HMI_SL_PP_SUBST)hmisl\lib;E:\software_develop\emat_new_bak-oston\emat_new_bak\lib;D:\vcpkg\vcpkg\installed\x86-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gsl.lib;gslcblas.lib;CL3_IF.lib;sloperatecppapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\software\vs2017\VC\Tools\MSVC\14.16.27023\include;.\qplot;.\emat_communicate;%(AdditionalIncludeDirectories);$(HMI_SL_PP_SUBST)include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(HMI_SL_PP_SUBST)hmisl\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sloperatecppapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="celibrate_calculate.cpp" />
+    <ClCompile Include="compensate_calculate.cpp" />
+    <ClCompile Include="compProgramGenerate.cpp" />
+    <ClCompile Include="config_file_operate.cpp" />
+    <ClCompile Include="emat_communicate\g_var.cpp" />
+    <ClCompile Include="emat_communicate\paramDefine.cpp" />
+    <ClCompile Include="emat_communicate\prasingRecvCmd.cpp" />
+    <ClCompile Include="emat_communicate\sendCmd.cpp" />
+    <ClCompile Include="emat_communicate\serial_communicate.cpp" />
+    <ClCompile Include="file_operator.cpp" />
+    <ClCompile Include="laserCompensate.cpp" />
+    <ClCompile Include="login.cpp" />
+    <ClCompile Include="nc_communicate\connectnc.cpp" />
+    <ClCompile Include="pointLaserCtl.cpp" />
+    <ClCompile Include="qplot\qcustomplot.cpp" />
+    <ClCompile Include="ultra_celibrate.cpp" />
+    <ClCompile Include="ultra_compensate.cpp" />
+    <ClCompile Include="ultra_measure.cpp" />
+    <ClCompile Include="ultra_param.cpp" />
+    <ClCompile Include="ultra_speed_config.cpp" />
+    <QtRcc Include="emat_new.qrc" />
+    <QtUic Include="emat_new.ui" />
+    <QtMoc Include="emat_new.h" />
+    <ClCompile Include="emat_new.cpp" />
+    <ClCompile Include="main.cpp" />
+    <QtUic Include="login.ui" />
+    <QtUic Include="ultra_celibrate.ui" />
+    <QtUic Include="ultra_compensate.ui" />
+    <QtUic Include="ultra_measure.ui" />
+    <QtUic Include="ultra_param.ui" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="ultra_param.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="login.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="celibrate_calculate.h" />
+    <QtMoc Include="compensate_calculate.h" />
+    <QtMoc Include="compProgramGenerate.h" />
+    <ClInclude Include="config_file_operate.h" />
+    <ClInclude Include="emat_communicate\g_var.h" />
+    <ClInclude Include="emat_communicate\paramDefine.h" />
+    <ClInclude Include="emat_communicate\prasingRecvCmd.h" />
+    <ClInclude Include="emat_communicate\sendCmd.h" />
+    <ClInclude Include="emat_communicate\serial_communicate.h" />
+    <ClInclude Include="emat_communicate\typeDefine.h" />
+    <ClInclude Include="file_operator.h" />
+    <ClInclude Include="general_define.h" />
+    <QtMoc Include="nc_communicate\connectnc.h" />
+    <QtMoc Include="ultra_compensate.h" />
+    <QtMoc Include="pointLaserCtl.h" />
+    <ClInclude Include="laserCompensate.h" />
+    <ClInclude Include="ultra_speed_config.h" />
+    <QtMoc Include="ultra_celibrate.h" />
+    <QtMoc Include="ultra_measure.h" />
+    <QtMoc Include="qplot\qcustomplot.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Vcpkg.Nuget.1.5.0\build\Vcpkg.Nuget.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Vcpkg.Nuget.1.5.0\build\Vcpkg.Nuget.props'))" />
+  </Target>
+</Project>

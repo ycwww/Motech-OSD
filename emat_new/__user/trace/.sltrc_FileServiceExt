@@ -1,0 +1,57 @@
+0 Errors
+
+1 Ftp Base
+
+2 Ftp Client
+
+3 Ftp Time measurement
+
+4 EES
+
+5 CAP comm
+
+6 copy
+
+7 function wrapper
+function wrapper for asynchronous call
+8 Ping Thread
+
+9 PCU:logical drives
+check and distribute all logdrive.ini for PCU at active option P75/P77
+10 login information
+checking login information for archive
+11 definition files
+active definition files for each NCU
+?
+
+?
+
+?
+
+15 Wrapper Ext
+eingeschränkter Traceumfang für Wrapperklasse
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+27 create test input
+create input for sltestfilesvc, see environment SLFSTESTINPUTFILE for absolute file or TEMP / TMP for path with file sltestfilesvc_in.txt
+ÿÿÿ?ÿÿÿ?

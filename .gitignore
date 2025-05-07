@@ -1,0 +1,70 @@
+# 操作系统生成的文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Visual Studio 特定文件和文件夹
+.vs/
+.idea/  # 若使用了 JetBrains 系列工具
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# 构建输出目录
+bin/
+obj/
+
+# 测试结果
+TestResults/
+*.trx
+
+# 代码分析结果
+*.dgml
+*.vcxprojResolveAssemblyReference.cache
+*.cache
+*.pdb
+*.vspscc
+*.vssscc
+.builds
+
+# NuGet 包
+packages/
+*.nupkg
+
+# 发布配置
+PublishProfiles/
+
+# 本地设置
+local.settings.json
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+#dll
+*.dll
+*.exe
+*.pdb
+
+# 配置文件（如果不想提交配置文件）
+appsettings.Development.json
+appsettings.Staging.json
+appsettings.Production.json
+
+# 加密密钥
+*.pfx
+*.p12
+
+# 数据库文件
+*.mdf
+*.ldf
+
+# 代码覆盖率结果
+coverage/
+
+# 打包输出
+publish/

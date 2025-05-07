@@ -1,0 +1,81 @@
+/*! 
+ *  \file	sltrpids.h
+ *  \author Ralf Wagner
+ *  \date   21.03.07
+ *
+ *  Header-File with trace ids trip recorder
+*/
+#if !defined(SLTRPIDS_H)
+#define SLTRPIDS_H
+
+typedef enum eTraceIdEnum_{
+             /* invalid trace id */
+/*   0/00 */ TRIP_INVALID = 0,
+   
+             /* trace events */
+/*   1/01 */ TRIP_HMI_START,
+/*   2/02 */ TRIP_HMI_EXIT,
+/*   3/03 */ TRIP_PLC_CRASH,
+/*   4/04 */ TRIP_PLC_CRASH_ALARM,
+/*   5/05 */ TRIP_KEY_PRESSED,
+/*   6/06 */ TRIP_KEY_PRESSED_MIGA_EMB,
+/*   7/07 */ TRIP_KEY_PRESSED_MIGA_ADV,
+/*   8/08 */ TRIP_KEY_RELEASED,
+/*   9/09 */ TRIP_KEY_RELEASED_MIGA_EMB,
+/*  10/0A */ TRIP_KEY_RELEASED_MIGA_ADV,
+/*  11/0B */ TRIP_ALARM,
+/*  12/0C */ TRIP_ALARM_QUIT,
+/*  13/0D */ TRIP_OPEN_WINDOW,
+/*  14/0E */ TRIP_OPEN_WINDOW_MIGA_EMB,
+/*  15/0F */ TRIP_OPEN_WINDOW_MIGA_ADV,
+/*  16/10 */ TRIP_CLOSE_WINDOW,
+/*  17/11 */ TRIP_CLOSE_WINDOW_MIGA_EMB,
+/*  18/12 */ TRIP_CLOSE_WINDOW_MIGA_ADV,
+/*  19/13 */ TRIP_CH_STATE_CHANGED,
+/*  20/14 */ TRIP_OPMODE_CHANGED,
+/*  21/15 */ TRIP_TOOL_CHANGED,
+/*  22/16 */ TRIP_OVERRIDE,
+/*  23/17 */ TRIP_PI_CMD_MIGA,
+/*  24/18 */ TRIP_DOM_CMD_OLD,
+/*  25/19 */ TRIP_DOM_CMD_MIGA_EMB,
+/*  26/1A */ TRIP_DOM_CMD_MIGA_ADV,
+/*  27/1B */ TRIP_WRITE_VAR,
+/*  28/1C */ TRIP_WRITE_VAR_MIGA_EMB,
+/*  29/1D */ TRIP_WRITE_VAR_MIGA_ADV,
+/*  30/1E */ TRIP_FINDBL_CMD,
+/*  31/1F */ TRIP_OVERSTORE,
+/*  32/20 */ TRIP_FILE_ACCESS,
+/*  33/21 */ TRIP_AREA_CHANGED,
+/*  34/22 */ TRIP_PROG_CONTROL_CHANGED,
+/*  35/23 */ TRIP_NC_CONNECTION,
+/*  36/24 */ TRIP_ALARM_MIGA_EMB,
+/*  37/25 */ TRIP_OPMODE_CHANGED2,
+/*  38/26 */ TRIP_ALARM_QUIT2,
+/*  39/27 */ TRIP_KEY_HOLD,
+/*  40/28 */ TRIP_PI_CMD,
+/*  41/29 */ TRIP_DOM_CMD,
+/*  42/2A */ TRIP_TOOL_CHANGED_NAME,
+/*  43/2B */ TRIP_OPEN_WINDOW_AREA,
+/*  44/2C */ TRIP_PATH_OVERRIDE,
+/*  45/2D */ TRIP_FEEDRATE_OVERRIDE,
+/*  46/2E */ TRIP_ALARM_ACKED,
+/*  47/2F */ TRIP_ARCHIVE_EVENT,
+/*  48/30 */ TRIP_COLLISION_CTRL_STATE,
+/*  49/31 */ TRIP_SOFTKEY_PRESSED,
+/*  50/32 */ TRIP_MONITORING_VAR,
+
+          /* internal trace events */
+/* 200/C8 */ TRIP_USER = 200,
+/* 201/C9 */ TRIP_ACTIVATED,
+/* 202/CA */ TRIP_DEACTIVATED,
+/* 203/CB */ TRIP_SUSPEND,
+/* 204/CC */ TRIP_RESUME,
+/* 205/CD */ TRIP_FOLLOW,
+/* 206/CE */ TRIP_WRITE_KNOWNVAR,
+ 
+   /* last entry */
+   TRIP_MAX_TRIP_ID,
+   TRIP_MAXNUM_TRIPID = 256   /* max. trace id */
+} TraceIdEnum;
+
+#endif //SLTRPIDS_H

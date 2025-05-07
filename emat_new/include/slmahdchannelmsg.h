@@ -1,0 +1,132 @@
+///////////////////////////////////////////////////////////////////////////////
+/*! \file   slmahdchannelmsg.h
+ *  \author Joachim Zapf
+ *  \date   17.10.2008
+ *  \brief  Class definition file for class SlMaHdChannelMsg.
+ *
+ *  This file is part of the HMI Solutionline GUI Header.
+ *
+ *  (C) Copyright Siemens AG A&D MC 2008. All rights reserved.
+*/
+///////////////////////////////////////////////////////////////////////////////
+
+#ifndef SL_MA_HD_CHANNEL_MSG_H_INCLUDED
+#define SL_MA_HD_CHANNEL_MSG_H_INCLUDED
+
+#include "slmaformlogicbase.h"
+
+class SlMaHdChannelMsgPrivate;
+
+/*! \class SlMaHdChannelMsg slmahdchannelmsg.h
+ *  \brief Businesslogic for SlMaHdChannelMsgForm
+ */
+class SL_MA_LOGIC_EXPORT SlMaHdChannelMsg : public SlMaFormLogicBase
+{
+  Q_OBJECT
+
+  /////////////////////////////////////////////////////////////////////////////
+  // PROPERTIES
+  /////////////////////////////////////////////////////////////////////////////
+
+  Q_ENUMS(SlCapErrorEnum);
+
+public:
+  /////////////////////////////////////////////////////////////////////////////
+  // ENUMS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////
+  // CREATORS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /*! \fn SlMaHdChannelMsg(const QString& rInstancePath = 0, QObject* pParent = 0)
+   *
+   *  \param  rInstancePath   in: const QString&  - default=QString::null (NCU-channel to connect)
+   *  \param  pParent  in: parent object          - default=0 (standard QT)
+   *
+   *  Constructor of SlMaHdChannelMsg.
+   */
+  SlMaHdChannelMsg(const QString& rInstancePath = 0, QObject* pParent = 0);
+
+  /*! \fn ~SlMaHdChannelMsg(void)
+   *
+   *  Destructor.
+   */
+  virtual ~SlMaHdChannelMsg(void);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // MANIPULATORS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////
+  // ACCESSORS
+  /////////////////////////////////////////////////////////////////////////////
+
+  const QString actChannelMessage(void);
+  const QString actIcon(void);
+  const QStringList& actStopCondParList(void);
+  
+  QString messageIcon(const int iMessageNumber);
+  
+  QString fillParameter(const QString& rszText, const QStringList& rParameterList);
+  
+  int messageDelayTime(const int iMessageNumber);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // PUBLIC SLOTS
+  /////////////////////////////////////////////////////////////////////////////
+public slots:
+
+  /////////////////////////////////////////////////////////////////////////////
+  // protected methods
+  /////////////////////////////////////////////////////////////////////////////
+protected:
+
+  /////////////////////////////////////////////////////////////////////////////
+  // SIGNALS
+  /////////////////////////////////////////////////////////////////////////////
+signals:
+
+  void showChannelMessage(const QString& rszChannelMessage, const QString& szIcon, const QStringList& rStopCondParList);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // private MEMBERS
+  /////////////////////////////////////////////////////////////////////////////
+private:
+
+  SlMaHdChannelMsgPrivate *m_pData; // d-pointer
+
+  ///////////////////////////////////////////////////////////////////////////
+  // private methods
+  ///////////////////////////////////////////////////////////////////////////
+
+  void showChannelMessage(const int iChannelMessage, const bool bForceShow = false);
+
+  // Channel Message
+  void adviseStopCondData(void);
+  void unadviceStopCondData(void);
+
+  void initStaticValues(void);
+  void initDummyValues(void);
+  void connectToNck(bool isInit = true);
+  void resumeToNck(void);
+  void disconnectToNck(void);
+  void suspendToNck(void);
+  void connectToLogic(void);
+  void disconnectToLogic(void);
+
+  /*! copy constructor not allowed */
+  SlMaHdChannelMsg(const SlMaHdChannelMsg& rCopy);
+  /*! assignment operator not allowed */
+  SlMaHdChannelMsg& operator=(const SlMaHdChannelMsg& rCopy);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // PRIVATE SLOTS
+  /////////////////////////////////////////////////////////////////////////////
+private slots:
+
+  void delayTimeout(void);
+  void stopCondDataSlot(SlCapErrorEnum, const QVector<SlCapAdviseResultType>&);
+};
+
+#endif // SL_MA_HD_CHANNEL_MSG_H_INCLUDED

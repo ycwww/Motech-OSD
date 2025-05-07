@@ -1,0 +1,12 @@
+#ifndef SL_HMI_CONVERTER_GLOBAL_H
+#define SL_HMI_CONVERTER_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#ifdef SL_HMI_CONVERTER_LIB
+# define SL_HMI_CONVERTER_EXPORT Q_DECL_EXPORT
+#else
+# define SL_HMI_CONVERTER_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // SL_HMI_CONVERTER_GLOBAL_H

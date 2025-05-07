@@ -1,0 +1,917 @@
+#include "laserCompensate.h"
+#include <QDebug>
+#include <qmessagebox.h>
+#include <QFile>
+#include "math.h"
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_filter.h>
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_multifit.h>
+#include <iostream>
+#include <algorithm>
+#include <QFileInfo>
+
+static bool isSameWithFormerData(const SENSOR_DATA_WITH_POS former, const SENSOR_DATA_WITH_POS cur)
+{
+	for (int i = 0; i < AXIS_NUMBER; i++)
+	{
+		if (0.001 < abs(former.wcs[i] - cur.wcs[i]))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool laserCompensate::readInfo(const QString& fileName, QList<QString>& readResult)
+{
+	QFile readFile(fileName);
+	if (!readFile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		QMessageBox::warning(NULL, "warning", "cannot open file", QMessageBox::Yes);
+		return false;
+	}
+	while (!readFile.atEnd())
+	{
+		QByteArray line = readFile.readLine();
+		QString str(line);
+		if ((str != QString::null) && (str != " ") && (str != "\n"))
+		{
+			readResult.push_back(str);
+		}
+	}
+	return true;
+}
+static int  find_index(const QStringList& origin_mpf, const QString str, unsigned int begin = 0)
+{
+	for (int i = begin; i < origin_mpf.size(); i++)
+	{
+		if (0 <= origin_mpf.at(i).indexOf(str))
+		{
+			return i;
+		}
+
+	}
+	return -1;
+}
+int laserCompensate::extract_number_from_mpf(const QString single_line_mpf, POINT_WITH_NORMAL&  pnt_and_normal)
+{
+	int index = -1;
+	QString tmp_str;
+	if (0 == single_line_mpf.length() || 0 < single_line_mpf.indexOf(";"))
+	{
+		return -1;
+	}
+	QStringList str_list = single_line_mpf.split(" ");
+	for (int i = 0; i < str_list.size(); i++)
+	{
+		index = str_list.at(i).indexOf("X");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.x = tmp_str.toDouble();
+			continue;
+		}
+		index = str_list.at(i).indexOf("Y");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.y = tmp_str.toDouble();
+			continue;
+		}
+		index = str_list.at(i).indexOf("Z");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.z = tmp_str.toDouble();
+			continue;
+		}
+		index = str_list.at(i).indexOf("A");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.a = tmp_str.toDouble();
+			continue;
+		}
+		if (0 <= str_list.at(i).indexOf("DC("))
+		{
+			int startIndex = str_list.at(i).indexOf("(");
+			int endIndex = str_list.at(i).indexOf(")");
+			if (0 > startIndex || 0 > endIndex)
+			{
+				return -1;
+			}
+			tmp_str = str_list.at(i).mid(startIndex + 1, endIndex - 1 - startIndex);
+			mOriginPoint.point.c = tmp_str.toDouble();
+			continue;
+		}
+		index = str_list.at(i).indexOf("C");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.c = tmp_str.toDouble();
+			continue;
+		}
+		index = str_list.at(i).indexOf("B");
+		if (0 <= index)
+		{
+			tmp_str = str_list.at(i).mid(index + 1);
+			mOriginPoint.point.b = tmp_str.toDouble();
+			continue;
+		}
+	}
+	memcpy_s(&pnt_and_normal, sizeof(pnt_and_normal), &mOriginPoint, sizeof(mOriginPoint));
+	return 0;
+}
+void laserCompensate::setMeasureType()
+{
+	mMeasureType = LASER_COMP_TYPE;
+}
+
+int laserCompensate::measurement_data_comparison(const POINT_WITH_NORMAL& curPos, std::vector<SENSOR_DATA_WITH_POS>& sensorDataWithPos, int index)
+{
+	float abs_difference[2] = { 0 };
+	float minAbsDiff = 1000.0;
+	int minIndex = -1;
+
+	if (0 == sensorDataWithPos.size())
+	{
+		return ERROR_SLOEM;
+	}
+	for (int i = index; i < sensorDataWithPos.size() - 1; i++)
+	{
+		abs_difference[0] = sqrt(pow(curPos.data[0] - sensorDataWithPos.at(i).wcs[0], 2) + 
+			pow(curPos.data[1] - sensorDataWithPos.at(i).wcs[1], 2)
+			+ pow(curPos.data[2] - sensorDataWithPos.at(i).wcs[2], 2));
+		if (/*3.0 > abs(curPos.data[3] - sensorDataWithPos.at(i).wcs[3]) &&*/
+			0.5 > abs(curPos.data[4] - sensorDataWithPos.at(i).wcs[4]) &&
+			minAbsDiff > abs_difference[0])
+		{
+			minAbsDiff = abs_difference[0];
+			minIndex = i;
+		}
+		if (1.0 > minAbsDiff)
+		{
+			break;
+		}
+	}
+	return minIndex;
+}
+struct IndexedDistance {
+	int index;
+	float distance;
+};
+bool index_compare(IndexedDistance a, IndexedDistance b)
+{
+	return a.distance < b.distance;
+}
+
+int laserCompensate::findClosetPoints(const POINT_WITH_NORMAL& curPos,
+	std::vector<SENSOR_DATA_WITH_POS>& sensorDataWithPos,
+	int index,
+	std::vector<int>& closestIndices)
+{
+	float radius = 0.0;
+	float radian_difference = 0.0, distance = 0.0;
+
+	std::vector<IndexedDistance> distances;
+
+	for (int i = index; i < sensorDataWithPos.size() - 1; i++) {
+		radius = sqrt(pow(curPos.data[1] - sensorDataWithPos.at(i).wcs[1], 2) +
+			pow(curPos.data[2] - sensorDataWithPos.at(i).wcs[2], 2));
+		distance = sqrt(pow(curPos.data[0] - sensorDataWithPos.at(i).wcs[0], 2) +
+			pow(curPos.data[1] - sensorDataWithPos.at(i).wcs[1], 2) +
+			pow(curPos.data[2] - sensorDataWithPos.at(i).wcs[2], 2));
+		radian_difference = abs(curPos.data[4] - sensorDataWithPos.at(i).wcs[4]) / 180.0 * 3.1415926 * radius;
+		
+		distances.push_back({ i, sqrt(pow(distance, 2) + pow(radian_difference,2))});
+		
+	}
+
+	// 按距离排序
+	std::sort(distances.begin(), distances.end(),index_compare);
+
+	// 获取最近的 5 个点的索引
+	closestIndices.clear();
+	for (size_t i = 0; i < std::min(distances.size(), size_t(5)); ++i) {
+		if (50 > distances[i].distance)
+		{
+			closestIndices.push_back(distances[i].index);
+		}
+		
+	}
+
+	return closestIndices.size();
+}
+
+#define POLYNOMIAL_COFFICIENT (4)
+int laserCompensate::multi_parameter_linear(std::vector<TOOL_POINT_DIFF>& vecPointNormal, std::vector<double>& result)
+{
+	gsl_matrix *X, *cov;
+	gsl_vector *y, *w, *c;
+	int n = vecPointNormal.size();
+	int i = 0;
+	double chisq;
+	char debugInfo[256] = { 0 };
+
+	X = gsl_matrix_alloc(n, POLYNOMIAL_COFFICIENT);
+	y = gsl_vector_alloc(n);
+	w = gsl_vector_alloc(n);
+
+	c = gsl_vector_alloc(POLYNOMIAL_COFFICIENT);
+	cov = gsl_matrix_alloc(POLYNOMIAL_COFFICIENT, POLYNOMIAL_COFFICIENT);
+
+	for (i = 0; i < n; i++)
+	{
+		gsl_matrix_set(X, i, 0, 1.0);
+		gsl_matrix_set(X, i, 1, vecPointNormal.at(i).wcs.data[mAxisIndex]);
+		gsl_matrix_set(X, i, 2, vecPointNormal.at(i).wcs.data[mAxisIndex] * vecPointNormal.at(i).wcs.data[mAxisIndex]);
+		gsl_matrix_set(X, i, 3, vecPointNormal.at(i).wcs.data[mAxisIndex] * 
+			vecPointNormal.at(i).wcs.data[mAxisIndex] * 
+			vecPointNormal.at(i).wcs.data[mAxisIndex]);
+
+		gsl_vector_set(y, i, vecPointNormal.at(i).diff);
+		gsl_vector_set(w, i, 1.0 / (0.03 * 0.03));
+	}
+
+	{
+		gsl_multifit_linear_workspace * work
+			= gsl_multifit_linear_alloc(n, POLYNOMIAL_COFFICIENT);
+		gsl_multifit_wlinear(X, w, y, c, cov,
+			&chisq, work);
+		gsl_multifit_linear_free(work);
+	}
+
+#define C(i) (gsl_vector_get(c,(i)))
+#define COV(i,j) (gsl_matrix_get(cov,(i),(j)))
+
+	for (int i = 0; i < POLYNOMIAL_COFFICIENT; i++)
+	{
+		result.push_back(C(i));
+	}
+	gsl_matrix_free(X);
+	gsl_vector_free(y);
+	gsl_vector_free(w);
+	gsl_vector_free(c);
+	gsl_matrix_free(cov);
+	return 0;
+}
+int laserCompensate::smoothAlongWithWorkAxis(std::vector<TOOL_POINT_DIFF>& vecDiff)
+{
+	std::vector<TOOL_POINT_DIFF> singleAxisDiff;
+	std::vector<TOOL_POINT_DIFF>* pFittingResullt = new std::vector<TOOL_POINT_DIFF>;
+	bool isPostive = false;
+	bool formerIsPostive = isPostive;
+	std::vector<double> fittingResult;
+	singleAxisDiff.push_back(vecDiff.at(0));
+	for (int i = 1; i < vecDiff.size(); i++)
+	{
+		if (mRangeAxisSize[0] <= vecDiff.at(i).wcs.data[mAxisIndex] &&
+			mRangeAxisSize[1] >= vecDiff.at(i).wcs.data[mAxisIndex])
+		{
+			isPostive = (0 <= vecDiff.at(i).wcs.data[mAxisIndex] -
+				vecDiff.at(i - 1).wcs.data[mAxisIndex]) ? true : false;
+		}
+		else
+			continue;
+		if (isPostive == formerIsPostive)
+		{
+			singleAxisDiff.push_back(vecDiff.at(i));
+		}
+		else
+		{
+			fittingResult.clear();
+			if (POLYNOMIAL_COFFICIENT < singleAxisDiff.size())
+			{
+				multi_parameter_linear(singleAxisDiff, fittingResult);
+				for (int j = 0; j < singleAxisDiff.size(); j++)
+				{
+					double xi = singleAxisDiff.at(j).wcs.data[mAxisIndex];
+					singleAxisDiff.at(j).diff = fittingResult[0] + fittingResult[1] * xi +
+						fittingResult[2] * xi * xi + fittingResult[3] * xi * xi * xi;
+					pFittingResullt->push_back(singleAxisDiff.at(j));
+				}
+				singleAxisDiff.clear();
+			}
+			singleAxisDiff.push_back(vecDiff.at(i));
+		}
+		formerIsPostive = isPostive;
+	}
+	vecPointDiff.clear();
+	qDebug() << "vecPointDiff.size:" << vecPointDiff.size() 
+		<< "pFittingResullt.size" << pFittingResullt->size();
+	for (auto it = pFittingResullt->begin(); it != pFittingResullt->end(); it++)
+	{
+		vecPointDiff.push_back(*it);
+	}
+	delete pFittingResullt;
+
+	return EOK;
+}
+int addAxisCompensate(const QString& origin_line, float xCompVal, float yCompVal, float zCompVal, QString& result)
+{
+	QStringList str_list = origin_line.split(" ");
+	QString insertStr = QString::null;
+	bool isInsertX = false;
+	bool isInsertY = false;
+	bool isInsertZ = false;
+
+	if (0.001 < abs(zCompVal))
+	{
+		insertStr = "Z";
+		insertStr += QString::number(zCompVal, 'f', 3);
+		for (int i = 0; i < str_list.size(); i++)
+		{
+			if (0 <= str_list.at(i).indexOf("Z"))
+			{
+				str_list.replace(i, insertStr);
+				isInsertZ = true;
+				break;
+			}
+		}
+		if (!isInsertZ)
+		{
+			int i = 0;
+			for (i = 0; i < str_list.size(); i++)
+			{
+				if (0 <= str_list.at(i).indexOf("A") || 0 <= str_list.at(i).indexOf("C"))
+				{
+					break;
+				}
+			}
+			if (i == str_list.size())
+			{
+				str_list.push_back(insertStr);
+				isInsertY = true;
+			}
+			else
+			{
+				str_list.insert(i, insertStr);
+				isInsertY = true;
+			}
+		}
+	}
+	if (0.001 < abs(yCompVal))
+	{
+		insertStr = "Y";
+		insertStr += QString::number(yCompVal, 'f', 3);
+		for (int i = 0; i < str_list.size(); i++)
+		{
+			if (0 <= str_list.at(i).indexOf("Y"))
+			{
+				str_list.replace(i, insertStr);
+				isInsertY = true;
+				break;
+			}
+		}
+		if (!isInsertY)
+		{
+			int i = 0;
+			for (i = 0; i < str_list.size(); i++)
+			{
+				if (0 <= str_list.at(i).indexOf("Z") ||
+					0 <= str_list.at(i).indexOf("A") || 0 <= str_list.at(i).indexOf("C"))
+				{
+					break;
+				}
+			}
+			if (i == str_list.size())
+			{
+				str_list.push_back(insertStr);
+				isInsertY = true;
+			}
+			else
+			{
+				str_list.insert(i, insertStr);
+				isInsertY = true;
+			}
+		}
+	}
+	if (0.001 < abs(xCompVal))
+	{
+		insertStr = "X";
+		insertStr += QString::number(xCompVal, 'f', 3);
+		for (int i = 0; i < str_list.size(); i++)
+		{
+			if (0 <= str_list.at(i).indexOf("X"))
+			{
+				str_list.replace(i, insertStr);
+				isInsertX = true;
+				break;
+			}
+		}
+		if (!isInsertX)
+		{
+			int i = 0;
+			for (i = 0; i < str_list.size(); i++)
+			{
+				if (0 <= str_list.at(i).indexOf("Y") || 0 <= str_list.at(i).indexOf("Z") ||
+					0 <= str_list.at(i).indexOf("A") || 0 <= str_list.at(i).indexOf("C"))
+				{
+					break;
+				}
+			}
+			if (0 == str_list.size())
+			{
+				str_list.push_back(insertStr);
+				isInsertY = true;
+			}
+			else
+			{
+				str_list.insert(i, insertStr);
+				isInsertX = true;
+			}
+		}
+	}
+
+	result = str_list.join(" ");
+	return 0;
+}
+
+template<typename T>
+T clamp(T value, T low, T high) {
+	return std::max(low, std::min(value, high));
+}
+std::vector<TOOL_POINT_DIFF> laserCompensate::cubicBSplineSmoothZ(const std::vector<TOOL_POINT_DIFF>& points, double tension) {
+	size_t n = points.size();
+	if (n < 2) {
+		std::cerr << "Not enough points to perform smoothing." << std::endl;
+		return points;
+	}
+
+	std::vector<double> zSmoothed(n);
+	std::vector<TOOL_POINT_DIFF> smoothedPoints = points;
+
+	// 确定 Z 轴的最大和最小值，以便进行限制
+	double minZ = points[0].diff;
+	double maxZ = points[0].diff;
+	for (const auto& point : points) {
+		minZ = (minZ <= point.diff) ?  minZ : point.diff;
+		maxZ = (maxZ >= point.diff) ? maxZ : point.diff;
+	}
+	qDebug() << "minZ:" << minZ << "maxZ:" << maxZ;
+
+	// Cubic B-Spline interpolation with clamped boundary
+	zSmoothed[0] = points[0].diff; // Start with first point
+	zSmoothed[n - 1] = points[n - 1].diff; // End with last point
+
+	// 通过三次插值平滑每个点的Z轴值
+	for (size_t i = 1; i < n - 1; ++i) {
+		double p0 = points[i - 1].diff;
+		double p1 = points[i].diff;
+		double p2 = points[i + 1].diff;
+		double m0 = (p1 - p0) * (1 - tension);
+		double m1 = (p2 - p1) * (1 - tension);
+
+		// Cubic Hermite spline
+		double t = 0.5; // 这里t固定为0.5，可以根据需要调整
+		double t2 = t * t;
+		double t3 = t2 * t;
+
+		double h00 = 2 * t3 - 3 * t2 + 1;
+		double h10 = t3 - 2 * t2 + t;
+		double h01 = -2 * t3 + 3 * t2;
+		double h11 = t3 - t2;
+
+		double z = h00 * p1 + h10 * m0 + h01 * p2 + h11 * m1;
+		zSmoothed[i] = clamp(z, minZ, maxZ);
+	}
+
+	// 将平滑后的 Z 值分配回坐标
+	for (size_t i = 0; i < n; ++i) {
+		qDebug() << "origin compen_value :" << smoothedPoints[i].diff << "  " << zSmoothed[i];
+		smoothedPoints[i].diff = zSmoothed[i];
+	}
+
+	return smoothedPoints;
+}
+bool laserCompensate::calculateComVal(std::vector<TOOL_POINT_DIFF>& vecDiff, QStringList& originMpf, QString fileName)
+{
+	float bias[3] = { 0 };
+	double xCompensateVal = 0.0;
+	double yCompensateVal = 0.0;
+	double zCompensateVal = 0.0;
+	const int avrLeng = 3;
+
+	QStringList* pNCRemoveLineBreak = new QStringList;
+	if (0 == vecDiff.size())
+	{
+		return false;
+	}
+	int begin_index = 0;
+	int end_index = 0;
+	std::vector<double> avrDiff;
+	for (int i = 0; i < vecDiff.size(); i++)
+	{
+		
+		begin_index = 0;
+		end_index = 0;
+		avrDiff.clear();
+		begin_index = (0 <= i - avrLeng) ? (i - avrLeng) : 0;
+		end_index = (i + avrLeng < vecDiff.size()) ? (i + avrLeng) : (vecDiff.size() - 1);
+		for (int j = begin_index; j < end_index; j++)
+		{
+			avrDiff.push_back(vecDiff.at(j).diff);
+		}
+		for (int j = 1; 0 != avrDiff.size() && j < avrDiff.size(); j++)
+		{
+			avrDiff.at(0) += avrDiff.at(j);
+		}
+		vecDiff.at(i).diff = avrDiff.at(0) / avrDiff.size();
+		//qDebug() << "vecDiff.at(i).diff" << i << vecDiff.at(i).diff;
+	}
+	
+	if (isFilter)
+	{
+		/*for (int i = 0; i < vecDiff.size(); i++)
+		{
+			if (0.5 <= vecDiff.at(i).diff)
+			{
+				vecDiff.at(i).diff = 0.2;
+			}
+			if (-0.5 > abs(vecDiff.at(i).diff))
+			{
+				vecDiff.at(i).diff = -0.2;
+			}
+		}*/
+		///gaussianFilter(vecDiff);
+		//smoothAlongWithWorkAxis(vecDiff);
+		cubicBSplineSmoothZ(vecDiff, 0.5);
+	}
+	for (auto it = vecDiff.begin(); it != vecDiff.end(); it++)
+	{
+		bias[0] = sin(it->wcs.point.a / 180.0 * 3.1415926) * sin(it->wcs.point.c / 180.0 * 3.1415926);
+		bias[1] = -sin(it->wcs.point.a / 180.0 * 3.1415926) * cos(it->wcs.point.c / 180.0 * 3.1415926);
+		bias[2] = cos(it->wcs.point.a / 180.0 * 3.1415926);
+
+		xCompensateVal = it->wcs.data[0] + it->diff * bias[0];
+		yCompensateVal = it->wcs.data[1] + it->diff * bias[1];
+		zCompensateVal = it->wcs.data[2] + it->diff * bias[2];
+		QString line = originMpf.at(it->index).trimmed();
+		QString singleResult;
+		addAxisCompensate(line, xCompensateVal, yCompensateVal, zCompensateVal, singleResult);
+		originMpf.replace(it->index, singleResult);
+	}
+
+	for (int j = 0; j < originMpf.size(); j++)
+	{
+		if (0 < originMpf.at(j).trimmed().length())
+		{
+			pNCRemoveLineBreak->push_back(originMpf.at(j).trimmed());
+		}
+	}
+	QFile writeFile(fileName);
+	if (writeFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+	{
+		QTextStream out(&writeFile);
+		out << pNCRemoveLineBreak->join("\n")+"\n";
+		writeFile.close();
+	}
+	delete pNCRemoveLineBreak;
+	return true;
+}
+
+void laserCompensate::setOriginPos(const POINT_WITH_NORMAL& originPos)
+{
+	for (int i = 0; i < AXIS_NUMBER; i++)
+	{
+		mOriginPoint.data[i] = originPos.data[i];
+	}
+}
+void laserCompensate::readSensorData(const QString sensorDataPath)
+{
+	QStringList* pStrLst = new QStringList;
+	SENSOR_DATA_WITH_POS singleLaserData = { 0 };
+	SENSOR_DATA_WITH_POS formerSingleLaserData = { 0 };
+	std::vector<SENSOR_DATA_WITH_POS> sameLaserData;
+	std::vector<SENSOR_DATA_WITH_POS>* pOriginLaserData = new std::vector<SENSOR_DATA_WITH_POS>;
+	QString line;
+	vecSensorData.clear();
+	float tmpSensorValue;
+	if (0 == sensorDataPath.length())
+		return;
+	readInfo(sensorDataPath, *pStrLst);
+	for (int i = 0; i < pStrLst->size(); i++)
+	{
+		line = pStrLst->at(i).trimmed();
+		QStringList tmp = line.split(",");
+		if (AXIS_NUMBER + 1 > tmp.size())
+		{
+			continue;
+		}
+		if (LASER_COMP_TYPE == mMeasureType)
+		{
+			for (int j = 0; j < AXIS_NUMBER; j++)
+			{
+				singleLaserData.wcs[j] = tmp.at(j).toDouble();
+			}
+			for (int j = AXIS_NUMBER; j < tmp.size(); j++)
+			{
+				if (true == tmp.at(j).trimmed().isEmpty())
+				{
+					continue;
+				}
+				tmpSensorValue = tmp.at(j).toDouble();
+				if (-100 > tmpSensorValue || 100 < tmpSensorValue)
+				{
+					continue;
+				}
+				singleLaserData.sensorVal = tmpSensorValue;
+				pOriginLaserData->push_back(singleLaserData);
+			}
+		}
+		else if(ULTRASONIC_COMP_TYPE == mMeasureType)
+		{
+			
+			if (11 > tmp.size())
+			{
+				continue;
+			}
+			for (int j = 0; j < AXIS_NUMBER; j++)
+			{
+				singleLaserData.wcs[j] = tmp.at(j).toDouble();
+			}
+			tmpSensorValue = tmp.at(AXIS_NUMBER).toDouble();
+			singleLaserData.standard_value = tmp.at(AXIS_NUMBER + 1).toDouble();
+			if (toleranceThick > abs(tmpSensorValue - singleLaserData.standard_value) && 0.01 > abs(singleLaserData.wcs[INDEX_TOOL_AXIS_A]))
+			{
+				singleLaserData.sensorVal = tmpSensorValue;
+			}
+			else
+			{
+				if (0 == vecSensorData.size())
+				{
+					continue;
+				}
+				singleLaserData.sensorVal = vecSensorData.at(vecSensorData.size() - 1).sensorVal;
+			}
+			
+			vecSensorData.push_back(singleLaserData);
+		}
+	}
+	if (LASER_COMP_TYPE == mMeasureType)
+	{
+		for (int i = 0; i < pOriginLaserData->size(); i++)
+		{
+			if (isSameWithFormerData(formerSingleLaserData, pOriginLaserData->at(i)))
+			{
+				sameLaserData.push_back(pOriginLaserData->at(i));
+			}
+			else
+			{
+				float delt_x = (pOriginLaserData->at(i).wcs[0] - formerSingleLaserData.wcs[0]) / (sameLaserData.size() + 1);
+				float delt_y = (pOriginLaserData->at(i).wcs[1] - formerSingleLaserData.wcs[1]) / (sameLaserData.size() + 1);
+				float delt_z = (pOriginLaserData->at(i).wcs[2] - formerSingleLaserData.wcs[2]) / (sameLaserData.size() + 1);
+				float delt_a = (pOriginLaserData->at(i).wcs[3] - formerSingleLaserData.wcs[3]) / (sameLaserData.size() + 1);
+				float delt_b = (pOriginLaserData->at(i).wcs[4] - formerSingleLaserData.wcs[4]) / (sameLaserData.size() + 1);
+				float delt_c = (pOriginLaserData->at(i).wcs[5] - formerSingleLaserData.wcs[5]) / (sameLaserData.size() + 1);
+
+				for (int k = 0; k < sameLaserData.size(); k++)
+				{
+					sameLaserData.at(k).wcs[0] += (delt_x * (k + 1));
+					sameLaserData.at(k).wcs[1] += (delt_y * (k + 1));
+					sameLaserData.at(k).wcs[2] += (delt_z * (k + 1));
+					sameLaserData.at(k).wcs[3] += (delt_a * (k + 1));
+					sameLaserData.at(k).wcs[4] += (delt_b * (k + 1));
+					sameLaserData.at(k).wcs[5] += (delt_c * (k + 1));
+					if (!isNosise(sameLaserData.at(k), basicThick, toleranceThick))
+					{
+						vecSensorData.push_back(sameLaserData.at(k));
+					}
+				}
+				sameLaserData.clear();
+				if (!isNosise(pOriginLaserData->at(i), basicThick, toleranceThick))
+				{
+					vecSensorData.push_back(pOriginLaserData->at(i));
+				}
+				memcpy_s(&formerSingleLaserData, sizeof(formerSingleLaserData),
+					&pOriginLaserData->at(i), sizeof(pOriginLaserData->at(i)));
+			}
+		}
+	}
+
+	delete pOriginLaserData;
+	delete pStrLst;
+}
+bool laserCompensate::isNosise(SENSOR_DATA_WITH_POS sensorData,float basic, float tolerance)
+{
+	return false;
+}
+bool laserCompensate::findBeginEndIndex(const QStringList* pStrLst, int& beginIndex, int& endIndex)
+{
+	if (NULL == pStrLst || 0 == pStrLst->size())
+	{
+		return false;
+	}
+	beginIndex = find_index(*pStrLst, ";JINDAO", 0);
+	if (0 > beginIndex)
+	{
+		QMessageBox::warning(NULL, "warning", ";JINDAO", QMessageBox::Yes);
+		return false;
+	}
+	endIndex = find_index(*pStrLst, ";TUIDAO", beginIndex);
+	if (0 > endIndex)
+	{
+		QMessageBox::warning(NULL, "warning", ";TUIDAO", QMessageBox::Yes);
+		return false;
+	}
+	return true;
+}
+// 查找包含关键字的最小行索引
+int findMinimumKeywordIndex(const QList<QString>& readResult, const QStringList& keywords) {
+	int minIndex = -1;
+
+	for (int i = 0; i < readResult.size(); ++i) {
+		const QString& line = readResult[i];
+		for (const QString& keyword : keywords) {
+			if (line.contains(keyword)) {
+				if (minIndex == -1 || i < minIndex) {
+					minIndex = i; // 更新最小索引
+				}
+				break; // 当前行已找到关键字，跳出关键字循环
+			}
+		}
+	}
+	return minIndex;
+}
+int laserCompensate::generateProgram(const QString sensorDataPath, const QString originNCPath, bool isPositive)
+{
+	QStringList* pStrLst = new QStringList;
+	int begin_index;
+	int end_index;
+	int index = -1;
+	bool isFirstData = true;
+	int former_index = 0;
+	
+	int sameIdex = 0;
+	POINT_WITH_NORMAL curPos, toolPos;
+	int origin_index = -1;
+	TOOL_POINT_DIFF tmpPointDiff = { 0 };
+	float coefficient = (isPositive == true) ? 1.0 : -1.0;
+	int maxStep = 0;
+	//int errorIndex = 0;
+	if (0 == sensorDataPath.length() || 0 == originNCPath.length())
+	{
+		QMessageBox::warning(NULL, "warning", "file path is empty", QMessageBox::Yes);
+		return -1;
+	}
+	//setMeasureType();
+	qDebug() << mMeasureType;
+	readSensorData(sensorDataPath);
+	if (0 == vecSensorData.size())
+	{
+		QMessageBox::warning(NULL, "warning", "vecSensorData is null", QMessageBox::Yes);
+		return -1;
+	}
+	qDebug() << "vecSensorData.size()" << vecSensorData.size();
+	pStrLst->clear();
+	readInfo(originNCPath, *pStrLst);
+	qDebug() << originNCPath;
+	if (0 == pStrLst->size())
+	{
+		QMessageBox::warning(NULL, "warning", "pStrLst is empty", QMessageBox::Yes);
+		return -1;
+	}
+	
+	if (!findBeginEndIndex(pStrLst, begin_index, end_index))
+	{
+		QMessageBox::warning(NULL, "warning", QString::fromLocal8Bit("未找到进退刀标识"), QMessageBox::Yes);
+		return ERROR_SLOEM;
+	}
+	origin_index = findMinimumKeywordIndex(*pStrLst, { "G54", "G55", "G56", "G57", "G58" });
+	if (0 > origin_index || begin_index <= origin_index)
+	{
+		QMessageBox::warning(NULL, "warning", QString::fromLocal8Bit("未定义工件坐标系"), QMessageBox::Yes);
+		return ERROR_SLOEM;
+	}
+	for (int i = 0; i < begin_index; i++)
+	{
+		memset(&curPos, 0, sizeof(curPos));
+		QString line = pStrLst->at(i).trimmed();
+		extract_number_from_mpf(line, curPos);	
+		qDebug() << curPos.data;
+	}
+
+	//errorIndex = 0;
+	qDebug() << "begin_index " << begin_index << "end_index " << end_index << " "<<end_index - begin_index;
+	for (int i = begin_index + 1; i < end_index; i++)
+	{
+		memset(&curPos, 0, sizeof(curPos));
+		QString line = pStrLst->at(i).trimmed();
+		
+		if (0 > extract_number_from_mpf(line, curPos))
+		{
+			continue;
+		}
+		if (0 == sameIdex)
+		{
+			index = measurement_data_comparison(curPos, vecSensorData, (0 < former_index - 1) ? former_index - 1 : 0);
+		}
+		else
+		{
+			index = measurement_data_comparison(curPos, vecSensorData, 0);
+		}
+		if (index == -1)
+		{
+			index = measurement_data_comparison(curPos, vecSensorData, 0);
+		}
+		if (-1 == index)
+		{
+			index = former_index;
+			sameIdex++;
+		}
+		else
+		{
+			sameIdex = 0;
+		}
+		if (0 > index ||30 < sameIdex)
+		{
+			qDebug() << line;
+			qDebug() << curPos.point.x << curPos.point.y << curPos.point.z << curPos.point.a << curPos.point.b<< curPos.point.c;
+			qDebug() << vecSensorData.at(former_index).wcs[0] << vecSensorData.at(former_index).wcs[1] <<
+				vecSensorData.at(former_index).wcs[2] << vecSensorData.at(former_index).wcs[3] << vecSensorData.at(former_index).wcs[4]<< vecSensorData.at(former_index).wcs[5];
+			QMessageBox::warning(NULL, "warning", "Error in measurement_data_comparison errorIndex:" + QString::number(index), QMessageBox::Yes);
+			return ERROR_SLOEM;
+		}
+		
+		former_index = index;
+		//qDebug() << "measurement_data_comparison index" << index;
+		if (LASER_COMP_TYPE == mMeasureType)
+		{
+			if (isFirstData)
+			{
+				if (useUniStandard)
+				{
+					machineDatum = machineDatum;
+				}
+				else
+				{
+					machineDatum = vecSensorData.at(index).sensorVal;
+					
+				}
+				isFirstData = false;
+				qDebug() << "machineDatum" << machineDatum;					
+			}
+
+			tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - machineDatum);
+		}
+		else if (ULTRASONIC_COMP_TYPE == mMeasureType)
+		{	
+			std::vector<int> indexLst;
+			if (0 >= findClosetPoints(curPos, vecSensorData, 0, indexLst))
+			{
+				tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - vecSensorData.at(index).standard_value);
+			}
+			else
+			{
+				float avrSensorVal = 0.0;
+				for (auto vecIndec : indexLst)
+				{
+					avrSensorVal += vecSensorData.at(vecIndec).sensorVal;
+				}
+				avrSensorVal /= indexLst.size();
+				tmpPointDiff.diff = coefficient * (avrSensorVal - vecSensorData.at(index).standard_value);
+			}
+			
+			
+		}
+		else {
+			return ERROR_SLOEM;
+		}
+		
+		tmpPointDiff.index = i;
+		memcpy_s(&tmpPointDiff.wcs, sizeof(tmpPointDiff.wcs), &(curPos), sizeof(curPos));
+		vecPointDiff.push_back(tmpPointDiff);
+		qDebug() << "measurement_data_comparison index" << index<<"compensate_val"<< tmpPointDiff.diff;
+	}
+	QFileInfo fileInfo(originNCPath);
+	QString directory = fileInfo.absolutePath();
+	QString fileName = fileInfo.fileName();
+	QString extension = fileInfo.suffix();
+
+	QString externName = (mMeasureType == LASER_COMP_TYPE) ? "_JG." :"_CS.";
+	// 新文件的路径（相同文件夹 + 原文件名 + 当前时间）
+	QString newFilePath = directory + "/" + fileName.left(fileName.lastIndexOf('.'))
+		+ externName + extension;
+	calculateComVal(vecPointDiff, *pStrLst, newFilePath);
+	QMessageBox::warning(NULL, "tip", "generate NC program successfully");
+	delete pStrLst;
+
+	return EOK;
+}
+void  laserCompensate::setSmoothParam(float startIndex, float endIndex, TOOL_AXIS_INDEX axis_index)
+{
+	float tmp;
+	if (startIndex > endIndex)
+	{
+		tmp = endIndex;
+		endIndex = startIndex;
+		startIndex = tmp;
+	}
+	mRangeAxisSize[0] = startIndex;
+	mRangeAxisSize[1] = endIndex;
+
+	mAxisIndex = axis_index;
+}

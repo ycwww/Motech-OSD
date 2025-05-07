@@ -1,0 +1,290 @@
+#include "ultra_compensate.h"
+#include <QFileDialog>
+#include <QDir>
+#include <QMessageBox>
+#include "file_operator.h"
+#include "./nc_communicate/connectnc.h"
+#include <QDir>
+#include "compProgramGenerate.h"
+#include <QDebug>
+#include <iostream>
+#include "laserCompensate.h"
+const QString SUB_PROGRAM_NAME = "PROJ_TOOLCOMP";
+ultra_compensate::ultra_compensate(QWidget *parent)
+	: QMainWindow(parent)
+	, ui(new Ui::ultra_compensateClass())
+{
+	ui->setupUi(this);
+	setUltraMeasureUi();
+	point_list = new QVector<MEASURE_POINT_S>;
+	pOutStr = new QString;
+	is_finish_cal = false;
+	connect(ui->ptn_import_proc, &QPushButton::clicked, &nc_connect, &connectNC::DispNCFile);
+	connect(ui->ptn_compensate_cal, &QPushButton::clicked, this, &ultra_compensate::data_process);
+	connect(ui->ptn_output2NC, &QPushButton::clicked, this, &ultra_compensate::output_mpf_file);
+	connect(this, &ultra_compensate::send_tool_length_threshold, &cal_comp_val, &compensate_calculate::accept_tool_length_threshold);
+	connect(this, &ultra_compensate::send_tool_length_threshold, &compensateProgram, &ultraCompProgram::accept_tool_length_threshold);
+	connect(ui->rtn_uni_standard, &QRadioButton::toggled, this, &ultra_compensate::set_standard_valid);
+	ui->rtn_uni_standard->setChecked(false);
+	ui->ldt_standard->setEnabled(false);
+}
+
+ultra_compensate::~ultra_compensate()
+{
+	delete ui;
+}
+
+void ultra_compensate::set_status_pointer(void* p)
+{
+	if (NULL == p)
+	{
+		return;
+	}
+	pStatus = (QLabel*)p;
+}
+
+void ultra_compensate::set_status_txt(const QString& txt)
+{
+	if (NULL != pStatus)
+	{
+		pStatus->setText(txt);
+	}
+}
+void ultra_compensate::setUltraMeasureUi()
+{
+
+	QList<QPushButton*> pBtnList;
+	pBtnList.append(ui->ptn_import_proc);
+	pBtnList.append(ui->ptn_compensate_cal);
+	pBtnList.append(ui->ptn_output2NC);
+
+	QFont font_ptn("SimSun", 20, QFont::Bold);
+	for (QList<QPushButton*>::iterator it = pBtnList.begin(); it != pBtnList.end(); it++)
+	{
+		(*it)->setFont(font_ptn);
+		(*it)->setStyleSheet("QPushButton {"
+			"background-color: lightgray;"
+			"border: 2px solid gray;"
+			"border-radius: 5px;"
+			"min-width: 220px;"
+			"min-height: 65px;"
+			"}");
+		(*it)->raise();
+	}
+
+}
+void ultra_compensate::data_process()
+{
+	
+	MEASURE_TYPE_E mea_type;
+	float smooth_factor = ui->ldt_smooth_factor->text().toFloat();
+	QString sensorDataPath =
+		QFileDialog::getOpenFileName(this, QString::fromLocal8Bit("请选择测量结果文件"),
+			"D://thickness_data",
+			tr("csv Files (*.csv)"));
+	if (0 == sensorDataPath.length())
+	{
+		set_status_txt(QString::fromLocal8Bit("输入文件为空"));
+		return;
+	}
+	cal_comp_val.readSensorData(sensorDataPath, *point_list, mea_type);
+	if (0 > smooth_factor || 1 < smooth_factor)
+	{
+		set_status_txt(QString::fromLocal8Bit("平滑系数设置错误"));
+		return;
+	}
+	if (ui->rtn_origin_move->isChecked())
+	{
+		origin_move_compensate();
+	}
+	else if (ui->rtn_tool_comp->isChecked())
+	{
+		emit send_tool_length_threshold(ui->tool_threshold->text(), 0.0, 0.0);
+		tool_comp_vec.clear();
+		pOutStr->clear();
+		cal_comp_val.cal_tool_comp_val(*point_list, tool_comp_vec, mea_type);
+		pOutStr->append("PROC " + SUB_PROGRAM_NAME + "\n" );
+		for (auto pair_comp : tool_comp_vec)
+		{
+			pOutStr->append("TOOLCOMP[" + QString::number(pair_comp.first) + "]=");
+			pOutStr->append(QString::number(pair_comp.second, 'f', 3) + "\n");
+		}
+		pOutStr->append("RET\n");
+		ui->tdt_mpf->setText(*pOutStr);
+		is_finish_cal = true;
+	}
+	else if (ui->rtn_p2p_comp->isChecked())
+	{
+		emit send_tool_length_threshold(ui->tool_threshold->text(), 0.0, smooth_factor);
+		NCProgramPath =
+			QFileDialog::getOpenFileName(this, tr("Please origin NC Program"),
+				QString("D:\\maching_file"),
+				tr("txt Files (*.mpf *.MPF *.spf *SPF)"));
+		if (0 == sensorDataPath.length() || 0 == NCProgramPath.length())
+		{
+			QMessageBox::warning(NULL, "warning", "file path is empty", QMessageBox::Yes);
+			return;
+		}
+	
+		//compensateProgram.isFilter = false;
+		////compensateProgram.maxBais = 0.3;
+		//compensateProgram.basicThick = 2;
+		//compensateProgram.toleranceThick = 0.3;
+		//compensateProgram.theoryThick =1.5;
+		//compensateProgram.generateProgram(sensorDataPath, NCProgramPath, maching_comp);
+		//is_finish_cal = true;
+		laserCompensate mUltrCompensate;
+		mUltrCompensate.mMeasureType = ULTRASONIC_COMP_TYPE;
+		mUltrCompensate.isFilter = true;
+		mUltrCompensate.toleranceThick = ui->tool_threshold->text().toFloat();
+		if (EOK == mUltrCompensate.generateProgram(sensorDataPath, NCProgramPath, false))
+		{
+			is_finish_cal = true;
+		}
+
+	}
+	else if (ui->rtn_laser_comp->isChecked())
+	{
+		emit send_tool_length_threshold(ui->tool_threshold->text(), ui->ldt_standard->text().toFloat(), smooth_factor);
+		qDebug() << ui->ldt_standard->text().toFloat();
+		NCProgramPath =
+			QFileDialog::getOpenFileName(this, tr("Please origin NC Program"),
+				QString("D:\\maching_file"),
+				tr("txt Files (*.mpf *.MPF *.spf *SPF)"));
+		if (0 == sensorDataPath.length() || 0 == NCProgramPath.length())
+		{
+			QMessageBox::warning(NULL, "warning", "file path is empty", QMessageBox::Yes);
+			return;
+		}
+		laserCompensate laserComp;
+		laserComp.mMeasureType = LASER_COMP_TYPE;
+		if (ui->ldt_standard->isEnabled())
+		{
+			laserComp.useUniStandard = true;
+			laserComp.machineDatum = ui->ldt_standard->text().toFloat();
+		}
+		else
+		{
+			laserComp.useUniStandard = false;
+			laserComp.machineDatum = 0.0;
+		}
+		laserComp.isFilter = true;
+		if (EOK == laserComp.generateProgram(sensorDataPath, NCProgramPath, true))
+		{
+			is_finish_cal = true;
+		}
+	}
+	else
+	{
+		return;
+	}
+	
+}
+
+void ultra_compensate::origin_move_compensate()
+{
+	QPair<double, double> final_range;
+
+	if (0 == point_list->size())
+	{
+		set_status_txt(QString::fromLocal8Bit("没有有效测量数据"));
+		return;
+	}
+	cal_comp_val.cal_compensate_val(*point_list, final_range);
+	point_list->clear();
+	if (0.001 > abs(final_range.first) && 0.001 > abs(final_range.second))
+	{
+		QMessageBox::warning(NULL, QString::fromLocal8Bit("警告"), QString::fromLocal8Bit("未计算出补偿量"), QMessageBox::Yes);
+		return;
+	}
+	ui->ldt_bais->setText(QString::number((final_range.first + final_range.second) / 2, 'f', 3));
+}
+void ultra_compensate::tool_comp_compensate()
+{
+	if (0 == point_list->size())
+	{
+		set_status_txt(QString::fromLocal8Bit("没有有效测量数据"));
+		return;
+	}
+}
+
+void ultra_compensate::output_mpf_file()
+{
+	file_operator file_io;
+	if (ui->rtn_tool_comp->isChecked())
+	{
+		QString sourcefileName = QDir::currentPath();
+		sourcefileName += "/" + SUB_PROGRAM_NAME + ".SPF";
+		QString destFileName = "//NC/SPF.DIR/";
+		destFileName += SUB_PROGRAM_NAME + ".SPF";
+
+		if (!is_finish_cal)
+		{
+			set_status_txt(QString::fromLocal8Bit("请先计算补偿量"));
+			return;
+		}
+		pOutStr->clear();
+		pOutStr->append(ui->tdt_mpf->toPlainText());
+		file_io.writeTextFile(sourcefileName, *pOutStr);
+		SlNode source(sourcefileName.toLatin1().data());
+		SlNode dest(destFileName.toLatin1().data());
+		if (SL_FILESVC_OK != nc_connect.cpoyFile2NC(source, dest))
+		{
+			set_status_txt(QString::fromLocal8Bit("写入失败"));
+		}
+		else
+		{
+			set_status_txt(QString::fromLocal8Bit("写入成功"));
+		}
+		is_finish_cal = false;
+	}
+	else if(ui->rtn_p2p_comp->isChecked())
+	{
+		QString sourcefileName = "D:/maching_file";
+		sourcefileName += "/" + COMPENSATE_MPF_NAME  + ".MPF";
+		QString destFileName = "//NC/MPF.DIR/";
+		destFileName += "CMP_" + NCProgramPath + ".MPF";
+		qDebug() << sourcefileName;
+		qDebug() << destFileName;
+		if (!is_finish_cal)
+		{
+			set_status_txt(QString::fromLocal8Bit("请先计算补偿量"));
+			return;
+		}
+		/*pOutStr->clear();
+		pOutStr->append(ui->tdt_mpf->toPlainText());
+		file_io.writeTextFile(sourcefileName, *pOutStr);*/
+
+		//SlNode source(sourcefileName.toLatin1().data());
+		//SlNode dest(destFileName.toLatin1().data());
+
+		SlString file_address(sourcefileName.toUtf8().constData());
+		SlNode source(file_address);
+		SlString downfile_name(destFileName.toUtf8().constData());
+		SlNode dest(downfile_name);
+		if (SL_FILESVC_OK != nc_connect.cpoyFile2NC(source, dest))
+		{
+			set_status_txt(QString::fromLocal8Bit("写入失败"));
+		}
+		else
+		{
+			set_status_txt(QString::fromLocal8Bit("写入成功"));
+		}
+		is_finish_cal = false;
+	}
+
+}
+void ultra_compensate::download_ncfile() {
+
+}
+void  ultra_compensate::set_standard_valid(bool checked)
+{
+	if (ui->rtn_uni_standard->isChecked())
+	{
+		ui->ldt_standard->setEnabled(true);
+	}
+	else
+	{
+		ui->ldt_standard->setEnabled(false);
+	}
+}

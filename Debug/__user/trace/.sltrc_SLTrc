@@ -1,0 +1,57 @@
+! tracing off
+Central control possibility, switches off all enabled traces
+! important errors
+Enables tracing of important error (errors which induce hmi being deficient)
+! filter: by threadId
+Only trace outputs of the below specified thread are accumultated
+! filter: by processId
+Only trace outputs of the below specified process are accumultated
+! enable: TAO logging
+if set: the TAO logging level is raised to 100 at next traceoutput, if not set the TAO debugging level is left unchanged, on change of this bit the TAO logging level is set to 0 at next traceoutput
+! pick: ACE logging
+picks ACE logging messages. Use your .conf file to configure ACE logging.
+! pick: Qt messages
+picks Qt messages issued by qWarning, qFatal, qDebug, ...
+?
+
+! add: file/linenumber
+Filename and the linenumber of the trace statement are appended to each trace output
+! add: timestamp
+A timestamp is output with each trace statement
+! add: threadId
+The threadId is output with each trace statement
+! add: processId
+The processId is output with each trace statement
+! add: module name
+The name of the module is output with each trace statement
+! add: traceBit/traceLevel
+The traceBit number and the traceLevel is output with each trace statement
+! add: hostname
+The TCPIP local host name is output with each trace statement
+! add: stackpointer
+The stackpointer is output with each trace statement
+?
+
+?
+
+! datasink: file
+File output is enabled. The size of the trace output files is limited by settings
+! datasink: traceView
+A window showing the latest lines of the trace is opened
+! datasink: IDE
+The trace output is directed into the IDE
+! datasink: stdout of sltrcsvc
+Traces are output through "standard output" of sltrcsvc (e.g. for ssh redirection)
+?
+
+?
+
+SlTrc settings interface
+
+! remove tracefile (datasink)
+removes/empties the file datasink
+! trace server terminate
+causes the trace server process to exit
+! trace server error
+indicates a trace output problem in the trace server. A reset will cause a retry in the server.
+b1b1

@@ -1,0 +1,52 @@
+#pragma once
+#include <QString>
+#include <vector>
+#include "general_define.h"
+
+typedef enum
+{
+	LASER_COMP_TYPE = 0,
+	ULTRASONIC_COMP_TYPE = 1,
+
+}MEASURE_COMPENSATE_TYPE_E;
+
+class laserCompensate
+{
+public:
+	/*func:readInfo
+	brief:
+	*/
+	bool readInfo(const QString& fileName, QList<QString>& readResult);
+	int generateProgram(const QString sensorDataPath, const QString originNCPath, bool isPositive);
+	void setOriginPos(const POINT_WITH_NORMAL& originPos);
+	virtual int measurement_data_comparison(const POINT_WITH_NORMAL& curPos, std::vector<SENSOR_DATA_WITH_POS>& sensorDataWithPos, int index);
+	virtual bool isNosise(SENSOR_DATA_WITH_POS sensorData, float basic, float tolerance);
+	virtual void setMeasureType();
+	std::vector<SENSOR_DATA_WITH_POS> vecSensorData;
+	bool isFilter;
+	float basicThick;
+	float toleranceThick;
+	float mRangeAxisSize[2];
+	TOOL_AXIS_INDEX mAxisIndex;
+	void setSmoothParam(float startIndex, float endIndex, TOOL_AXIS_INDEX axis_index = INDEX_TOOL_AXIS_Z);
+	MEASURE_COMPENSATE_TYPE_E mMeasureType;
+	float machineDatum;
+	bool useUniStandard;
+private:
+	
+	std::vector<TOOL_POINT_DIFF> vecPointDiff;
+	int extract_number_from_mpf(const QString single_line_mpf, POINT_WITH_NORMAL&  pnt_and_normal);
+	POINT_WITH_NORMAL mOriginPoint;
+	bool calculateComVal(std::vector<TOOL_POINT_DIFF>& vecPointNormal, QStringList& originMpf, QString fileName);
+	void readSensorData(const QString sensorDataPath);
+	bool findBeginEndIndex(const QStringList* pStrLst, int& beginIndex, int& endIndex);
+	int multi_parameter_linear(std::vector<TOOL_POINT_DIFF>& vecPointNormal, std::vector<double>& result);
+	std::vector<TOOL_POINT_DIFF> cubicBSplineSmoothZ(const std::vector<TOOL_POINT_DIFF>& points, double tension);
+	int smoothAlongWithWorkAxis(std::vector<TOOL_POINT_DIFF>& vecPointNormal);
+	int findClosetPoints(const POINT_WITH_NORMAL& curPos,
+		std::vector<SENSOR_DATA_WITH_POS>& sensorDataWithPos,int index,std::vector<int>& closestIndices);
+};
+
+
+
+

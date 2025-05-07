@@ -1,0 +1,57 @@
+0 Errors
+
+1 Progress msg
+
+2 Net drives
+
+3 list
+
+4 TCU
+
+5 CAP comm
+
+6 copy
+
+7 createFile
+
+8 createFolder
+
+9 exist
+
+10 isDriveMounted
+
+11 remove
+
+12 move
+
+13 setAccessMask
+
+14 getNodeInfo
+
+15 select
+
+16 getLogicalPath
+
+17 getRealPath
+
+18 getDiskFreeSpace
+
+19 extern
+
+20 Adapter iface
+
+21 Adapter ref. count
+
+22 SSH Connection
+
+23 V24
+
+24 Cache
+
+25 Startup
+
+26 DataPool
+
+27 compress
+
+ÿÿÿ?ÿÿÿ?

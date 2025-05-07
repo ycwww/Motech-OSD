@@ -1,0 +1,95 @@
+///////////////////////////////////////////////////////////////////////////////
+/*! \file   slhmifunctioncontrol.h
+ *  \author Joachim Zapf
+ *  \date   10.03.2010
+ *  \brief  Headerfile for class SlHmiFunctionControl
+ *
+ *  This file is part of the HMI HMI Operate Utilitieslib.
+ *
+ *  (C) Copyright Siemens AG A&D MC 2010. All rights reserved.
+ */
+///////////////////////////////////////////////////////////////////////////////
+
+#if !defined(SL_HMI_FUNCTION_CONTROL_H)
+#define SL_HMI_FUNCTION_CONTROL_H
+
+#if !defined(SL_HMI_EXPORT)
+#   if defined(WIN32) || defined(WIN64)
+#       ifdef SL_HMI_MAKE_DLL
+#           define SL_HMI_EXPORT Q_DECL_EXPORT
+#       else
+#           define SL_HMI_EXPORT Q_DECL_IMPORT
+#       endif
+#   else
+#       define SL_HMI_EXPORT
+#   endif
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+// Forward declarations
+///////////////////////////////////////////////////////////////////////////////
+
+class SlHmiFunctionControlPrivate;
+
+///////////////////////////////////////////////////////////////////////////////
+// enums
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+/*! \class SlHmiFunctionControl slhmifunctioncontrol.h
+ *
+ *  \brief Static interface for functions are allowed
+ *
+*/
+class SL_HMI_EXPORT SlHmiFunctionControl
+{
+public:
+  /////////////////////////////////////////////////////////////////////////////
+  // MANIPULATORS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////
+  // ACCESSORS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /*! \fn static bool isFunctionAllowed(const QString& rszFunction, const QString& rszArea, const QString& rszDialog, const QString& rszScreen, const QString& rszForm)
+   *
+   *  \param rszFunction: function name in slhmifuncctrl.xml
+   *  \param rszArea:     actual area
+   *  \param rszDialog:   actual dialog
+   *  \param rszScreen:   actual screen
+   *  \param rszForm:     actual form
+   *
+   *  \retval true: function is allowed
+   *
+  */
+  static bool isFunctionAllowed(const QString& rszFunction, const QString& rszArea, const QString& rszDialog, const QString& rszScreen, const QString& rszForm);
+
+private:
+  /////////////////////////////////////////////////////////////////////////////
+  // private members
+  /////////////////////////////////////////////////////////////////////////////
+
+  static SlHmiFunctionControl *S_pInstance;
+  SlHmiFunctionControlPrivate *m_pData;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // private methods
+  /////////////////////////////////////////////////////////////////////////////
+
+  static SlHmiFunctionControl *getInstance(void);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // private CREATORS (Singleton)
+  /////////////////////////////////////////////////////////////////////////////
+
+  /*! \fn SlHmiFunctionControl()
+   *
+   *  private Constructor for Singleton
+   */
+  SlHmiFunctionControl();
+
+  ~SlHmiFunctionControl();
+};
+
+#endif // SL_HMI_FUNCTION_CONTROL_H
