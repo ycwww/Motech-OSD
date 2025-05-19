@@ -115,7 +115,7 @@ void ultra_compensate::data_process()
 	}
 	else if (ui->rtn_p2p_comp->isChecked())
 	{
-		emit send_tool_length_threshold(ui->tool_threshold->text(), 0.0, smooth_factor);
+		emit send_tool_length_threshold(ui->tool_threshold->text(), ui->tool_threshold_2->text().toFloat(), smooth_factor);
 		NCProgramPath =
 			QFileDialog::getOpenFileName(this, tr("Please origin NC Program"),
 				QString("D:\\maching_file"),
@@ -137,6 +137,7 @@ void ultra_compensate::data_process()
 		mUltrCompensate.mMeasureType = ULTRASONIC_COMP_TYPE;
 		mUltrCompensate.isFilter = true;
 		mUltrCompensate.toleranceThick = ui->tool_threshold->text().toFloat();
+		mUltrCompensate.toleranceThick_2= ui->tool_threshold_2->text().toFloat();
 		if (EOK == mUltrCompensate.generateProgram(sensorDataPath, NCProgramPath, false))
 		{
 			is_finish_cal = true;

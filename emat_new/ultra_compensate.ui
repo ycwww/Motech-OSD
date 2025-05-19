@@ -220,19 +220,19 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="title">
-     <string>补偿限制</string>
+     <string>超声厚度范围（绝对值）</string>
     </property>
     <widget class="QWidget" name="horizontalLayoutWidget">
      <property name="geometry">
       <rect>
        <x>9</x>
        <y>30</y>
-       <width>201</width>
+       <width>210</width>
        <height>91</height>
       </rect>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_3">
-      <item alignment="Qt::AlignRight">
+      <item>
        <widget class="QLabel" name="label_2">
         <property name="maximumSize">
          <size>
@@ -249,7 +249,7 @@ p, li { white-space: pre-wrap; }
          </font>
         </property>
         <property name="text">
-         <string>补偿阈值</string>
+         <string>下界</string>
         </property>
        </widget>
       </item>
@@ -270,7 +270,35 @@ p, li { white-space: pre-wrap; }
          </font>
         </property>
         <property name="text">
-         <string>0.5</string>
+         <string>2.0</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>上界</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="tool_threshold_2">
+        <property name="maximumSize">
+         <size>
+          <width>70</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <family>Adobe Arabic</family>
+          <pointsize>14</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>3.0</string>
         </property>
        </widget>
       </item>
@@ -379,7 +407,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>1290</width>
-     <height>14</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

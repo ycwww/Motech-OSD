@@ -676,6 +676,18 @@ void laserCompensate::readSensorData(const QString sensorDataPath)
 	if (0 == sensorDataPath.length())
 		return;
 	readInfo(sensorDataPath, *pStrLst);
+	
+	//激光数据最后几项是异常值，需要去除
+	if(LASER_COMP_TYPE == mMeasureType){
+		int remove_list = 0;
+		if (pStrLst->size() > 40000)
+			remove_list = 4;//A40删4个
+		else remove_list = 7;//A70删7个
+		for (int i = 0; i < remove_list; i++) {
+			pStrLst->removeLast();
+		}  
+	}
+
 	for (int i = 0; i < pStrLst->size(); i++)
 	{
 		line = pStrLst->at(i).trimmed();
@@ -743,7 +755,7 @@ void laserCompensate::readSensorData(const QString sensorDataPath)
 			}
 			tmpSensorValue = tmp.at(AXIS_NUMBER).toDouble();
 			singleLaserData.standard_value = tmp.at(AXIS_NUMBER + 1).toDouble();
-			if (toleranceThick > abs(tmpSensorValue - singleLaserData.standard_value) && 0.01 > abs(singleLaserData.wcs[INDEX_TOOL_AXIS_A]))
+			if (toleranceThick<=tmpSensorValue && toleranceThick_2>=tmpSensorValue && 0.01 > abs(singleLaserData.wcs[INDEX_TOOL_AXIS_A]))
 			{
 				singleLaserData.sensorVal = tmpSensorValue;
 			}
@@ -898,8 +910,8 @@ double polynomialFit_calculate_thickness(const std::vector<double>& coefficients
 	return y;
 }
 
-// 线程函数，用于计算一组 angel 的多项式拟合
-void calculatePolynomialForAngel(int angel, const std::vector<std::pair<double, double>>& vec_point, int degree, std::unordered_map<int, std::vector<double>>& result) {
+// 线程函数，用于计算一组 angle 的多项式拟合
+void calculatePolynomialForAngle(int angle, const std::vector<std::pair<double, double>>& vec_point, int degree, std::unordered_map<int, std::vector<double>>& result) {
 	std::vector<double> x;
 	std::vector<double> y;
 	for (const auto& point : vec_point) {
@@ -908,7 +920,7 @@ void calculatePolynomialForAngel(int angel, const std::vector<std::pair<double, 
 	}
 	std::vector<double> coefficients = polynomialFit(x, y, degree);
 
-	result[angel] = coefficients;
+	result[angle] = coefficients;
 }
 
 
@@ -928,7 +940,7 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 	float coefficient = (isPositive == true) ? 1.0 : -1.0;
 	int maxStep = 0;
 
-	// 存储每个 angel 的多项式拟合系数
+	// 存储每个 angle 的多项式拟合系数
 	std::unordered_map<int, std::vector<double>> polynomialCoefficients;
 
 	//int errorIndex = 0;
@@ -979,52 +991,52 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 	
 	//对数据进行预处理，对不同的b轴角度进行分类拟合曲线
 
-	int degree=10;
+	int degree=5;
 
 	if (LASER_COMP_TYPE == mMeasureType) {
 		//多项式的次数
-		degree = 10;
+		degree = 5;
 	}
 	else {
-		degree = 10;
+		degree = 8;
 	}
 
 
-	std::unordered_map <int, std::vector<std::pair < double, double >>> angel_point;
+	std::unordered_map <int, std::vector<std::pair < double, double >>> angle_point;
 	//按b轴角度分组
-	int angel = int(vecSensorData[0].wcs[4]);
+	int angle = int(vecSensorData[0].wcs[4]);
 	std::vector<std::pair<double, double>> vec_point;
 	for (const auto &SensorData : vecSensorData) {
 
-		if (int(SensorData.wcs[4]) == angel) {
+		if (int(SensorData.wcs[4]) == angle) {
 			if (SensorData.sensorVal != 0.0) {
 				vec_point.push_back({ SensorData.wcs[0], SensorData.sensorVal - SensorData.standard_value });
 			}
 		}
 		else {
 			if (vec_point.size() > 10) {
-				angel_point[angel] = vec_point;
+				angle_point[angle] = vec_point;
 			}
 			vec_point.clear();
-			angel = int(SensorData.wcs[4]);
+			angle = int(SensorData.wcs[4]);
 			vec_point.push_back({ SensorData.wcs[0], SensorData.sensorVal - SensorData.standard_value });
 		}
 	}
 	
 	if (vec_point.size() > 10) {
-		angel_point[angel] = vec_point;
+		angle_point[angle] = vec_point;
 	}
 
 	// 创建线程向量
 	std::vector<std::thread> threads;
 
-	// 为每个 angel 创建一个线程来计算多项式拟合
+	// 为每个 angle 创建一个线程来计算多项式拟合
 
-	for (const auto& pair : angel_point) {
-		int currentAngel = pair.first;
-		//qDebug() << "currentAngel" <<currentAngel;
+	for (const auto& pair : angle_point) {
+		int currentAngle = pair.first;
+		//qDebug() << "currentAngle" <<currentAngle;
 		const std::vector<std::pair<double, double>>& currentPoints = pair.second;
-		threads.emplace_back(calculatePolynomialForAngel, currentAngel, currentPoints, degree, std::ref(polynomialCoefficients));
+		threads.emplace_back(calculatePolynomialForAngle, currentAngle, currentPoints, degree, std::ref(polynomialCoefficients));
 	}
 
 	// 等待所有线程完成
@@ -1116,7 +1128,9 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 				}
 				else
 				{
-					machineDatum = vecSensorData.at(index).sensorVal;
+					//machineDatum = vecSensorData.at(index).sensorVal;
+					//保证第一刀下刀时的平滑
+					machineDatum = polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], curPos.point.x);
 
 				}
 				isFirstData = false;
@@ -1124,16 +1138,16 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 			}
 			int tmp_angle = int(curPos.point.b);
 			//给a70设置的约束
-			if (angel_point.find(tmp_angle) != angel_point.end()) {
+			if (angle_point.find(tmp_angle) != angle_point.end()) {
 				//tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - machineDatum);
-				tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle], curPos.point.x);
+				tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle], curPos.point.x)-machineDatum;
 			}
 			else {
 				if (tmp_angle >199) {
-					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle-1], curPos.point.x);
+					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle-1], curPos.point.x)-machineDatum;
 				}
 				else {
-					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle+1], curPos.point.x);
+					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle+1], curPos.point.x)-machineDatum;
 				}
 			}
 		}
@@ -1142,7 +1156,7 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 			std::vector<int> indexLst;
 			//这里由于刀路的采样频率大于超声的采样频率，因此无需判断，而且在这个找最近点的函数中并没有插入最近点，目前这是个浪费时间的无效函数
 			//if (0 >= findClosetPoints(curPos, vecSensorData, 0, indexLst))
-			if(1)
+			if(true)
 			{
 				//补偿直线
 				if (curPos.point.x <= 110 && curPos.point.x >= -110) {
@@ -1155,7 +1169,14 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 				else {
 					tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], -110.0);
 				}
-				
+				tmpPointDiff.diff = tmpPointDiff.diff > 0 ? 0 : tmpPointDiff.diff;
+				if (tmpPointDiff.wcs.point.a != 0&& abs(tmpPointDiff.wcs.point.a)<1.5) {
+					int ret = abs(tmpPointDiff.wcs.point.a) / 0.38;
+					tmpPointDiff.diff = tmpPointDiff.diff * (1 - ret * 0.2);
+				}
+				else if (tmpPointDiff.wcs.point.a != 0) {
+					tmpPointDiff.diff = 0.0;
+				}
 				//原方案，选就近点位，再做平滑处理
 				//tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - vecSensorData.at(index).standard_value);
 			}

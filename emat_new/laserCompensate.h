@@ -29,6 +29,7 @@ public:
 	bool isFilter;
 	float basicThick;
 	float toleranceThick;
+	float toleranceThick_2;
 	float mRangeAxisSize[2];
 	TOOL_AXIS_INDEX mAxisIndex;
 	void setSmoothParam(float startIndex, float endIndex, TOOL_AXIS_INDEX axis_index = INDEX_TOOL_AXIS_Z);

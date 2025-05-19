@@ -529,7 +529,7 @@ public:
         horizontalLayout_4->addLayout(verticalLayout_6);
 
         groupBox_3->raise();
-        layoutWidget2->raise();
+        layoutWidget4->raise();
         groupBox->raise();
         groupBox_2->raise();
         groupBox_4->raise();

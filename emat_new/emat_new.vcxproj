@@ -220,6 +220,7 @@
     <ClCompile Include="ultra_measure.cpp" />
     <ClCompile Include="ultra_param.cpp" />
     <ClCompile Include="ultra_speed_config.cpp" />
+    <ClCompile Include="Curvefit.cpp" />
     <QtRcc Include="emat_new.qrc" />
     <QtUic Include="emat_new.ui" />
     <QtMoc Include="emat_new.h" />

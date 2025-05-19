@@ -395,7 +395,7 @@ void ultra_measure::stop_measure_slots()
 			return;
 		}
 	}
-	
+
 	file_operator file_io;
 	QString fileName = file_io.createFolder("D:\\thickness_data");
 	fileName += "\\";
@@ -414,7 +414,7 @@ void ultra_measure::stop_measure_slots()
 		fileName += QString("_%1.csv")
 			.arg(currentTime.toString("hh_mm_ss_zzz"));
 	}
-	
+
 	if (!file_io.writeTextFile(fileName, *pOutStr))
 	{
 		set_status_txt(QString::fromLocal8Bit("数据写入失败！"));
@@ -427,7 +427,7 @@ void ultra_measure::stop_measure_slots()
 	QMessageBox *msgBox = new QMessageBox(QMessageBox::Information,
 		QString::fromLocal8Bit("提示"),
 		QString::fromLocal8Bit("测量完成") + '\n' + QString::fromLocal8Bit("最大补偿值：%1").arg(max_compen_val)
-		 + '\n' + QString::fromLocal8Bit("最小补偿值：%1").arg(min_compen_val),
+		+ '\n' + QString::fromLocal8Bit("最小补偿值：%1").arg(min_compen_val),
 		QMessageBox::Yes,
 		nullptr);
 
@@ -437,7 +437,7 @@ void ultra_measure::stop_measure_slots()
 
 void ultra_measure::timer_timeout_slots()
 {
-	static std::vector<float> fromerRParam(6, 0.0f); 
+	static std::vector<float> fromerRParam(6, 0.0f);
 	std::vector<float> rParam(6, 0.0f);
 	std::vector<float> vecData;
 	MEASURE_POINT_S point_info;
@@ -464,7 +464,12 @@ void ultra_measure::timer_timeout_slots()
 			point_info.axis[3] = curAxisPos[3];
 			point_info.axis[4] = curAxisPos[4];
 			point_info.axis[5] = curAxisPos[5];
-			point_info.real_thick = curThickness;
+			if (abs(curThickness - rParam[1]) > 1.0){
+				point_info.real_thick = 0.0;
+			}
+			else {
+				point_info.real_thick = curThickness;
+			} 
 			point_info.theroy_thick = rParam[1];
 			point_info.up_limit = rParam[2];
 			point_info.low_limit = rParam[3];

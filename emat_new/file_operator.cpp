@@ -32,19 +32,26 @@ QString file_operator::createFolder(const QString &folderPath)
 	return dateFolderPath;
 }
 
-bool file_operator::writeTextFile(const QString &filePath, const QString &content) 
+bool file_operator::writeTextFile(const QString &filePath, const QString &content)
 {
 	QFile file(filePath);
-	if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-	{
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
 		qDebug() << "Failed to open file for writing:" << filePath;
 		return false;
 	}
 
 	QTextStream out(&file);
-	out << content;
-	file.close();
+	const int chunkSize = 512 * 1024; // 1MB 块大小，可根据需求调整
+	for (int i = 0; i < content.size(); i += chunkSize) {
+		out << content.mid(i, chunkSize);
+		if (out.status() != QTextStream::Ok) {
+			qDebug() << "Failed to write to file:" << filePath;
+			file.close();
+			return false;
+		}
+	}
 
+	file.close();
 	qDebug() << "Content written to file:" << filePath;
 	return true;
 }

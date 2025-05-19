@@ -33,7 +33,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="&apos;$(Configuration)|$(Platform)&apos;==&apos;Debug|Win32&apos;">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\MOTECH~1\AppData\Local\Temp\yoe4ie1t.zw0;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtPrintSupport;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtWidgets;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtGui;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtANGLE;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtSerialPort;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtCore;C:\Users\MOTECH~1\AppData\Local\Temp\yoe4ie1t.zw0;/include;D:\Qt\Qt5.14.2\5.14.2\msvc2017\mkspecs\win32-msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\MOTECH~1\AppData\Local\Temp\pgg1wvz1.n45;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtPrintSupport;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtWidgets;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtGui;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtANGLE;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtSerialPort;D:\Qt\Qt5.14.2\5.14.2\msvc2017\include\QtCore;C:\Users\MOTECH~1\AppData\Local\Temp\pgg1wvz1.n45;/include;D:\Qt\Qt5.14.2\5.14.2\msvc2017\mkspecs\win32-msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:rvalueCast -Zc:inline -Zc:strictStrings -Zc:throwingNew -Zc:referenceBinding -Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>.\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>

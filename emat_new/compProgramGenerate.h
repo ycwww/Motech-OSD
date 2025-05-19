@@ -101,6 +101,7 @@ public:
 	CompStatus comp_status;
 	FileStatus file_status;
 	QString tool_length_threshold;
+	QString tool_length_threshold_2;
 	float mSmoothFactor;
 	float laserStandard;
 	MEASURE_POINT_S findClosestPoint(const QList<MEASURE_POINT_S>& points, double targetX, double targetY, double targetZ);

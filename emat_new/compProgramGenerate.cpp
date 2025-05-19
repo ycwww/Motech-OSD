@@ -1339,8 +1339,10 @@ typedef struct  {
 	int del_gird_num = 0;
 }gird_num_judge;
 void compProgramGenerate::accept_tool_length_threshold(QString threshold, float standard, float smooth_factor) {
-	tool_length_threshold = threshold;
-	laserStandard = standard;
+	tool_length_threshold = threshold;//下界
+	tool_length_threshold_2 = QString::number(standard, 'f', 2);//上界
+	//先维持原来的函数进行传参，后续可能还要修改
+	laserStandard = 0.0;
 	mSmoothFactor = smooth_factor;
 }
 #define TEST (1)

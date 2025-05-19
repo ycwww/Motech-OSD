@@ -57,6 +57,8 @@ public:
     QHBoxLayout *horizontalLayout_3;
     QLabel *label_2;
     QLineEdit *tool_threshold;
+    QLabel *label_4;
+    QLineEdit *tool_threshold_2;
     QGroupBox *laser_standard_group;
     QWidget *layoutWidget3;
     QVBoxLayout *verticalLayout;
@@ -184,7 +186,7 @@ public:
         groupBox_4->setFont(font2);
         horizontalLayoutWidget = new QWidget(groupBox_4);
         horizontalLayoutWidget->setObjectName(QString::fromUtf8("horizontalLayoutWidget"));
-        horizontalLayoutWidget->setGeometry(QRect(9, 30, 201, 91));
+        horizontalLayoutWidget->setGeometry(QRect(9, 30, 210, 91));
         horizontalLayout_3 = new QHBoxLayout(horizontalLayoutWidget);
         horizontalLayout_3->setSpacing(6);
         horizontalLayout_3->setContentsMargins(11, 11, 11, 11);
@@ -195,7 +197,7 @@ public:
         label_2->setMaximumSize(QSize(100, 16777215));
         label_2->setFont(font2);
 
-        horizontalLayout_3->addWidget(label_2, 0, Qt::AlignRight);
+        horizontalLayout_3->addWidget(label_2);
 
         tool_threshold = new QLineEdit(horizontalLayoutWidget);
         tool_threshold->setObjectName(QString::fromUtf8("tool_threshold"));
@@ -208,6 +210,18 @@ public:
         tool_threshold->setFont(font3);
 
         horizontalLayout_3->addWidget(tool_threshold);
+
+        label_4 = new QLabel(horizontalLayoutWidget);
+        label_4->setObjectName(QString::fromUtf8("label_4"));
+
+        horizontalLayout_3->addWidget(label_4);
+
+        tool_threshold_2 = new QLineEdit(horizontalLayoutWidget);
+        tool_threshold_2->setObjectName(QString::fromUtf8("tool_threshold_2"));
+        tool_threshold_2->setMaximumSize(QSize(70, 16777215));
+        tool_threshold_2->setFont(font3);
+
+        horizontalLayout_3->addWidget(tool_threshold_2);
 
         laser_standard_group = new QGroupBox(centralWidget);
         laser_standard_group->setObjectName(QString::fromUtf8("laser_standard_group"));
@@ -265,7 +279,7 @@ public:
         ultra_compensateClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(ultra_compensateClass);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 1290, 14));
+        menuBar->setGeometry(QRect(0, 0, 1290, 23));
         menu = new QMenu(menuBar);
         menu->setObjectName(QString::fromUtf8("menu"));
         ultra_compensateClass->setMenuBar(menuBar);
@@ -305,9 +319,11 @@ public:
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9pt; font-weight:400;\">TOOLCOMP[0]=0.0</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9pt; font-weight:400;\">TOOLCOMP[1]=-0.11</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9pt; font-weight:400;\">TOOLCOMP[2]=-0.15</span></p></body></html>", nullptr));
-        groupBox_4->setTitle(QCoreApplication::translate("ultra_compensateClass", "\350\241\245\345\201\277\351\231\220\345\210\266", nullptr));
-        label_2->setText(QCoreApplication::translate("ultra_compensateClass", "\350\241\245\345\201\277\351\230\210\345\200\274", nullptr));
-        tool_threshold->setText(QCoreApplication::translate("ultra_compensateClass", "0.5", nullptr));
+        groupBox_4->setTitle(QCoreApplication::translate("ultra_compensateClass", "\350\266\205\345\243\260\345\216\232\345\272\246\350\214\203\345\233\264\357\274\210\347\273\235\345\257\271\345\200\274\357\274\211", nullptr));
+        label_2->setText(QCoreApplication::translate("ultra_compensateClass", "\344\270\213\347\225\214", nullptr));
+        tool_threshold->setText(QCoreApplication::translate("ultra_compensateClass", "2.0", nullptr));
+        label_4->setText(QCoreApplication::translate("ultra_compensateClass", "\344\270\212\347\225\214", nullptr));
+        tool_threshold_2->setText(QCoreApplication::translate("ultra_compensateClass", "3.0", nullptr));
         laser_standard_group->setTitle(QCoreApplication::translate("ultra_compensateClass", "\346\277\200\345\205\211\345\217\202\346\225\260", nullptr));
         label_3->setText(QCoreApplication::translate("ultra_compensateClass", "\346\277\200\345\205\211\345\237\272\345\207\206", nullptr));
         ldt_standard->setText(QCoreApplication::translate("ultra_compensateClass", "0.0", nullptr));
