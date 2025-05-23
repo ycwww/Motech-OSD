@@ -100,7 +100,10 @@
     <ClCompile Include="laserCompensate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Curvefit.cpp">
+    <ClCompile Include="curve_fitting_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cubic_spline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -188,6 +191,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="laserCompensate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="curve_fitting_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cubic_spline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

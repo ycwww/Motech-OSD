@@ -12,6 +12,8 @@
 #include <iostream>
 #include <algorithm>
 #include <QFileInfo>
+#include "curve_fitting_manager.h"
+
 static bool isSameWithFormerData(const SENSOR_DATA_WITH_POS former, const SENSOR_DATA_WITH_POS cur)
 {
 	for (int i = 0; i < AXIS_NUMBER; i++)
@@ -758,18 +760,12 @@ void laserCompensate::readSensorData(const QString sensorDataPath)
 			if (toleranceThick<=tmpSensorValue && toleranceThick_2>=tmpSensorValue && 0.01 > abs(singleLaserData.wcs[INDEX_TOOL_AXIS_A]))
 			{
 				singleLaserData.sensorVal = tmpSensorValue;
+				if(vecSensorData.size()==0||abs(singleLaserData.wcs[0]-vecSensorData.back().wcs[0])>0.5)
+					vecSensorData.push_back(singleLaserData);
 			}
-			else
-			{
-				if (0 == vecSensorData.size())
-				{
-					continue;
-				}
-				singleLaserData.sensorVal = vecSensorData.at(vecSensorData.size() - 1).sensorVal;
-			}
-			
-			vecSensorData.push_back(singleLaserData);
+
 		}
+
 	}
 	if (LASER_COMP_TYPE == mMeasureType)
 	{
@@ -991,15 +987,15 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 	
 	//对数据进行预处理，对不同的b轴角度进行分类拟合曲线
 
-	int degree=5;
+	//int degree=5;
 
-	if (LASER_COMP_TYPE == mMeasureType) {
-		//多项式的次数
-		degree = 5;
-	}
-	else {
-		degree = 8;
-	}
+	//if (LASER_COMP_TYPE == mMeasureType) {
+	//	//多项式的次数
+	//	degree = 5;
+	//}
+	//else {
+	//	degree = 8;
+	//}
 
 
 	std::unordered_map <int, std::vector<std::pair < double, double >>> angle_point;
@@ -1027,23 +1023,34 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 		angle_point[angle] = vec_point;
 	}
 
-	// 创建线程向量
-	std::vector<std::thread> threads;
+	CurveFitting::CurveFittingManager manager;
 
-	// 为每个 angle 创建一个线程来计算多项式拟合
-
-	for (const auto& pair : angle_point) {
-		int currentAngle = pair.first;
-		//qDebug() << "currentAngle" <<currentAngle;
-		const std::vector<std::pair<double, double>>& currentPoints = pair.second;
-		threads.emplace_back(calculatePolynomialForAngle, currentAngle, currentPoints, degree, std::ref(polynomialCoefficients));
+	auto results = manager.fit_curves(
+		angle_point,
+		true, 0.0, 0.0,
+		[](size_t completed, size_t total) {
+		std::cout << "\r进度: " << completed << "/" << total << " ("
+			<< static_cast<int>(100.0 * completed / total) << "%)" << std::flush;
 	}
+	);
 
-	// 等待所有线程完成
+	//// 创建线程向量
+	//std::vector<std::thread> threads;
 
-	for (auto& thread : threads) {
-		thread.join();
-	}
+	//// 为每个 angle 创建一个线程来计算多项式拟合
+
+	//for (const auto& pair : angle_point) {
+	//	int currentAngle = pair.first;
+	//	//qDebug() << "currentAngle" <<currentAngle;
+	//	const std::vector<std::pair<double, double>>& currentPoints = pair.second;
+	//	threads.emplace_back(calculatePolynomialForAngle, currentAngle, currentPoints, degree, std::ref(polynomialCoefficients));
+	//}
+
+	//// 等待所有线程完成
+
+	//for (auto& thread : threads) {
+	//	thread.join();
+	//}
 
 
 
@@ -1118,6 +1125,8 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 
 			former_index = index;
 		}
+		int tmp_angle = int(curPos.point.b);
+		auto spline = results[tmp_angle];//多项式插值
 		if (LASER_COMP_TYPE == mMeasureType)
 		{
 			if (isFirstData)
@@ -1130,26 +1139,45 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 				{
 					//machineDatum = vecSensorData.at(index).sensorVal;
 					//保证第一刀下刀时的平滑
-					machineDatum = polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], curPos.point.x);
+					
+					//多项式插值
+					//machineDatum = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle], curPos.point.x);
+
+					machineDatum = spline->interpolate(curPos.point.x);//样条插值
 
 				}
 				isFirstData = false;
 				qDebug() << "machineDatum" << machineDatum;
 			}
-			int tmp_angle = int(curPos.point.b);
+
 			//给a70设置的约束
+			//if (angle_point.find(tmp_angle) != angle_point.end()) {
+			//	//tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - machineDatum);
+			//	tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle], curPos.point.x)-machineDatum;
+			//}
+			//else {
+			//	if (tmp_angle >199) {
+			//		tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle-1], curPos.point.x)-machineDatum;
+			//	}
+			//	else {
+			//		tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle+1], curPos.point.x)-machineDatum;
+			//	}
+			//}
+
 			if (angle_point.find(tmp_angle) != angle_point.end()) {
-				//tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - machineDatum);
-				tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle], curPos.point.x)-machineDatum;
+				spline = results[tmp_angle];//多项式插值
 			}
 			else {
-				if (tmp_angle >199) {
-					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle-1], curPos.point.x)-machineDatum;
+				if (tmp_angle <= 199) {
+					spline = results[tmp_angle - 1];
 				}
 				else {
-					tmpPointDiff.diff = polynomialFit_calculate_thickness(polynomialCoefficients[tmp_angle+1], curPos.point.x)-machineDatum;
+					spline = results[tmp_angle + 1];
 				}
 			}
+			//tmpPointDiff.diff = spline->interpolate(curPos.point.x);
+
+			tmpPointDiff.diff = spline->interpolate(curPos.point.x) - machineDatum;
 		}
 		else if (ULTRASONIC_COMP_TYPE == mMeasureType)
 		{	
@@ -1158,25 +1186,46 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 			//if (0 >= findClosetPoints(curPos, vecSensorData, 0, indexLst))
 			if(true)
 			{
+				////补偿直线
+				//if (curPos.point.x <= 110 && curPos.point.x >= -110) {
+				//	tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], curPos.point.x);
+				//}
+				////补偿圆弧
+				//else if(curPos.point.x > 110){
+				//	tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], 110.0);
+				//}
+				//else {
+				//	tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], -110.0);
+				//}
+				//tmpPointDiff.diff = tmpPointDiff.diff > 0 ? 0 : tmpPointDiff.diff;
+				//if (tmpPointDiff.wcs.point.a != 0&& abs(tmpPointDiff.wcs.point.a)<1.5) {
+				//	int ret = abs(tmpPointDiff.wcs.point.a) / 0.38;
+				//	tmpPointDiff.diff = tmpPointDiff.diff * (1 - ret * 0.2);
+				//}
+				//else if (tmpPointDiff.wcs.point.a != 0) {
+				//	tmpPointDiff.diff = 0.0;
+				//}
+
 				//补偿直线
 				if (curPos.point.x <= 110 && curPos.point.x >= -110) {
-					tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], curPos.point.x);
+					tmpPointDiff.diff = coefficient * spline->interpolate(curPos.point.x);
 				}
 				//补偿圆弧
-				else if(curPos.point.x > 110){
-					tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], 110.0);
-				}
-				else {
-					tmpPointDiff.diff = coefficient * polynomialFit_calculate_thickness(polynomialCoefficients[int(curPos.point.b)], -110.0);
-				}
-				tmpPointDiff.diff = tmpPointDiff.diff > 0 ? 0 : tmpPointDiff.diff;
-				if (tmpPointDiff.wcs.point.a != 0&& abs(tmpPointDiff.wcs.point.a)<1.5) {
-					int ret = abs(tmpPointDiff.wcs.point.a) / 0.38;
-					tmpPointDiff.diff = tmpPointDiff.diff * (1 - ret * 0.2);
-				}
-				else if (tmpPointDiff.wcs.point.a != 0) {
+				else if (curPos.point.x > 110) {
+					//tmpPointDiff.diff = coefficient * spline->interpolate(110.0);
 					tmpPointDiff.diff = 0.0;
 				}
+				else {
+					//tmpPointDiff.diff = coefficient * spline->interpolate(-110.0);
+					tmpPointDiff.diff = 0.0;
+				}
+				//tmpPointDiff.diff = tmpPointDiff.diff > 0 ? 0 : tmpPointDiff.diff;
+				//if (tmpPointDiff.wcs.point.a != 0 && abs(tmpPointDiff.wcs.point.a) < 1.5) {
+				//	int ret = abs(tmpPointDiff.wcs.point.a) / 0.38;
+				//	tmpPointDiff.diff = tmpPointDiff.diff * (1 - ret * 0.2);
+				//}
+
+
 				//原方案，选就近点位，再做平滑处理
 				//tmpPointDiff.diff = coefficient * (vecSensorData.at(index).sensorVal - vecSensorData.at(index).standard_value);
 			}
@@ -1197,7 +1246,7 @@ int laserCompensate::generateProgram(const QString sensorDataPath, const QString
 		tmpPointDiff.index = i;
 		memcpy_s(&tmpPointDiff.wcs, sizeof(tmpPointDiff.wcs), &(curPos), sizeof(curPos));
 		vecPointDiff.push_back(tmpPointDiff);
-		qDebug() << "measurement_data_comparison index" << index<<"compensate_val"<< tmpPointDiff.diff<<"tmp_index"<<i;
+		qDebug() << "measurement_data"<< tmpPointDiff.diff<<"tmp_index"<<i<<"x"<< curPos.point.x<<"b"<< curPos.point.b;
 	}
 	QFileInfo fileInfo(originNCPath);
 	QString directory = fileInfo.absolutePath();

@@ -220,7 +220,8 @@
     <ClCompile Include="ultra_measure.cpp" />
     <ClCompile Include="ultra_param.cpp" />
     <ClCompile Include="ultra_speed_config.cpp" />
-    <ClCompile Include="Curvefit.cpp" />
+    <ClCompile Include="curve_fitting_manager.cpp" />
+    <ClCompile Include="cubic_spline.cpp" />
     <QtRcc Include="emat_new.qrc" />
     <QtUic Include="emat_new.ui" />
     <QtMoc Include="emat_new.h" />
@@ -240,6 +241,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="celibrate_calculate.h" />
+    <ClInclude Include="curve_fitting_manager.h" />
+    <ClInclude Include="cubic_spline.h" />
     <QtMoc Include="compensate_calculate.h" />
     <QtMoc Include="compProgramGenerate.h" />
     <ClInclude Include="config_file_operate.h" />
